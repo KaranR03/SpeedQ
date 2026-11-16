@@ -1,6 +1,6 @@
 {
   "_about": {
-    "what": "Beacon Assist Protocol Database, demo version 2. One protocol per scenario. Prorio reads it to draft proposals; officers suggest changes; a protocol owner approves; every change bumps the protocol's version.",
+    "what": "Beacon Assist Protocol Database, demo version 2.1. One protocol per scenario. Prorio reads it to draft proposals; officers suggest changes; a protocol owner approves; every change bumps the protocol's version.",
     "how_written": "Every protocol is written in the team's own words. It summarises facts from public pages (each listed under sources) and never copies their text. Steps marked team_design are our own design, not a published rule. See backend/data/PROTOCOLS_SOURCES.md for the copyright approach.",
     "not_real": "This is not Westpac's internal procedure. It is a demo built from public information, read on 16 Nov 2026. Facts can change; re-check the source before relying on one.",
     "harm_categories": {
@@ -15,7 +15,8 @@
       "steps": "ordered steps; who = customer, AI (Clario), AI (Prorio) or officer",
       "ai_may": "what the AI may prepare or do; anything marked customer-chosen needs a Face ID step-up",
       "officer_must": "decisions and actions only a person may take",
-      "customer_message": "plain-English template Clario sends; placeholders in braces"
+      "customer_message": "plain-English template Clario sends; placeholders in braces",
+      "change_log": "what changed in each version and why (present on protocols changed since 2.0)"
     },
     "actions_in_code_today": ["ACTIVATE_SAFEBLOCK", "BLOCK_CARD", "RAISE_DISPUTE", "DRAFT_PAYMENT_RECALL", "DRAFT_SCAM_REPORT", "BOOK_CALLBACK", "SEND_CUSTOMER_UPDATE"],
     "actions_proposed_new": ["DRAFT_PAYMENT_TRACE", "ORDER_REPLACEMENT_CARD", "DRAFT_HARDSHIP_NOTES", "DRAFT_COMPLAINT_RESPONSE", "REFER_SPECIALIST_TEAM", "SEND_GUIDE_LINK"]
@@ -77,7 +78,7 @@
     {
       "issue_type": "VERIFY_CONTACT",
       "title": "\"Is this call or message really from Westpac?\"",
-      "version": "2.0", "harm_category": "SCAM_IN_PROGRESS", "min_band": null,
+      "version": "2.1", "harm_category": "GENERAL", "min_band": null,
       "clario_can_answer": [
         "Genuine calls can come through SafeCall in the Westpac App, which shows the reason for the call; if you miss one, the app tells you which team called.",
         "If you're not sure, get their reference number, end the call, and reach the bank yourself through the app or the number on the official website.",
@@ -85,16 +86,18 @@
       ],
       "protect_first": null,
       "steps": [
+        {"who": "AI (Clario)", "step": "Ask one question first: have you shared any codes, passwords or card details, installed anything, or moved money, or is the person still on the line telling you what to do? If any answer is yes, switch to SCAM_IN_PROGRESS straight away", "source": "team_design"},
         {"who": "AI (Clario)", "step": "Check for an open case or a scheduled call from the bank on this customer's record (demo: mock data)", "source": "team_design"},
         {"who": "AI (Clario)", "step": "If no record, advise not to act on the contact; offer SafeBlock if details were shared", "source": "westpac_impersonation"},
-        {"who": "AI (Prorio)", "step": "If the customer already shared codes or moved money, re-route to SCAM_IN_PROGRESS", "source": "team_design"}
+        {"who": "AI (Prorio)", "step": "Safety net: if account signals appear (new payee, unusual transfer, recent detail or device change), re-route to SCAM_IN_PROGRESS", "source": "team_design"}
       ],
       "ai_may": ["SEND_GUIDE_LINK", "ACTIVATE_SAFEBLOCK (customer-chosen)"],
       "officer_must": [],
       "required_checks": [],
       "customer_message": "We have no record of contacting you about this. Please don't act on it. If you shared any details, I can lock your accounts now.",
       "timeframes": [],
-      "notes": "Answers a real customer complaint: people can't tell genuine bank contact from scams.",
+      "notes": "Answers a real customer complaint: people can't tell genuine bank contact from scams. Scored as a general question because asking is the safe behaviour we want to encourage, and nothing is at risk yet; once anything is at risk, the case becomes SCAM_IN_PROGRESS and is scored as one.",
+      "change_log": [{"version": "2.1", "change": "Harm category SCAM_IN_PROGRESS -> GENERAL, so a plain 'is this real?' no longer ranks at P2 ahead of real cases. Danger cues now switch to the scam path immediately (Clario), with account signals as a safety net (Prorio).", "by": "team review, 16 Nov 2026"}],
       "sources": ["westpac_impersonation", "westpac_enhance_security"]
     },
     {
@@ -492,7 +495,7 @@
     {
       "issue_type": "FAMILY_VIOLENCE_FINANCIAL_ABUSE",
       "title": "Domestic or family violence, or financial abuse",
-      "version": "2.0", "harm_category": "HARDSHIP", "min_band": "P2",
+      "version": "2.1", "harm_category": "HARDSHIP", "min_band": "P2",
       "clario_can_answer": [
         "If you're in immediate danger, call 000. 1800RESPECT offers 24/7 counselling.",
         "The bank has a specialist team for these situations."
@@ -507,25 +510,50 @@
       "required_checks": ["safe contact method confirmed before any message"],
       "customer_message": "A specialist will contact you only at the time and by the method you choose.",
       "timeframes": [],
-      "notes": "Proposed gate: safety cases never sit below P2 (team_design; not yet in the README).",
+      "notes": "Gate G7 (README): safety cases never sit below P2 (team_design).",
+      "change_log": [{"version": "2.1", "change": "Proposed safety gate adopted in the README as G7.", "by": "team review, 16 Nov 2026"}],
       "sources": ["westpac_dv", "westpac_tough_times"]
     },
     {
-      "issue_type": "TRUSTED_PERSON_OR_ELDER_ABUSE",
-      "title": "Needs someone they trust to help, or suspected elder financial abuse",
-      "version": "2.0", "harm_category": "HARDSHIP", "min_band": null,
+      "issue_type": "TRUSTED_PERSON_ACCESS",
+      "title": "Customer wants someone they trust to help manage their banking",
+      "version": "2.1", "harm_category": "SERVICE", "min_band": "P3",
       "clario_can_answer": ["Ways to let a trusted person help: authorised third party (speaks for you by phone), account signatory (manages it in branch), account sharing (separate online profile), or third-party access."],
       "protect_first": null,
       "steps": [
         {"who": "AI (Clario)", "step": "Explain the options in plain language", "source": "westpac_trusted_person"},
-        {"who": "officer (specialist team)", "step": "Set up authority, or act on suspected abuse", "source": "westpac_elder_abuse"}
+        {"who": "AI (Clario)", "step": "Ask whether the customer is choosing this freely; if anyone is pressuring them, or someone else is asking on their behalf, switch to ELDER_FINANCIAL_ABUSE", "source": "team_design"},
+        {"who": "officer (specialist team)", "step": "Set up the authority after verifying both people", "source": "westpac_trusted_person"}
       ],
       "ai_may": ["SEND_GUIDE_LINK", "REFER_SPECIALIST_TEAM"],
-      "officer_must": ["authority set-up", "abuse response"],
-      "required_checks": ["identity of both people verified"],
+      "officer_must": ["authority set-up"],
+      "required_checks": ["identity of both people verified", "customer confirms the choice is their own"],
       "customer_message": "A specialist can set this up with you (case {case_id}).",
       "timeframes": [],
-      "sources": ["westpac_trusted_person", "westpac_elder_abuse"]
+      "notes": "Gate G3: giving another person authority or access changes who can act on the account, so it is officer-only and never below P3, even though it looks like admin.",
+      "change_log": [{"version": "2.1", "change": "Split from TRUSTED_PERSON_OR_ELDER_ABUSE v2.0. Routine requests stay officer-only at P3 (G3) instead of sharing a safety-case floor.", "by": "team review, 16 Nov 2026"}],
+      "sources": ["westpac_trusted_person"]
+    },
+    {
+      "issue_type": "ELDER_FINANCIAL_ABUSE",
+      "title": "Suspected financial abuse of an older customer (reported by the customer or someone worried about them)",
+      "version": "2.1", "harm_category": "HARDSHIP", "min_band": "P2",
+      "clario_can_answer": ["The bank has a specialist team for these situations."],
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Prioritise safety; ask only what's needed; don't send notifications that could alert someone else", "source": "team_design"},
+        {"who": "AI (Clario)", "step": "If the person reporting is not the account holder, share no details of anyone else's account; record the concern for the specialist team", "source": "team_design"},
+        {"who": "AI (Prorio)", "step": "Check signal flags on the account holder's record: new payees, unusual transfers, recent detail or device changes", "source": "team_design"},
+        {"who": "officer (specialist team)", "step": "Act on the suspected abuse, including reviewing who has authority or access on the account", "source": "westpac_elder_abuse"}
+      ],
+      "ai_may": ["REFER_SPECIALIST_TEAM", "BOOK_CALLBACK (customer chooses a safe time)"],
+      "officer_must": ["abuse response", "all account changes"],
+      "required_checks": ["safe contact method confirmed before any message"],
+      "customer_message": "A specialist will contact you only at the time and by the method you choose.",
+      "timeframes": [],
+      "notes": "Gate G7 (README): safety cases never sit below P2 (team_design). Money can be leaving through someone the customer trusts, so this is treated like family violence and financial abuse.",
+      "change_log": [{"version": "2.1", "change": "Split from TRUSTED_PERSON_OR_ELDER_ABUSE v2.0 and given the P2 safety floor (G7).", "by": "team review, 16 Nov 2026"}],
+      "sources": ["westpac_elder_abuse", "westpac_trusted_person"]
     },
     {
       "issue_type": "BEREAVEMENT",
