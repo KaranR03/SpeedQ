@@ -3,6 +3,11 @@
 The officer's first question is “who needs help next?” The first screen answers that with an evidence-ranked queue,
 four live counts and a short preview of one customer. The interface never invents response-time statistics or case data.
 
+**Current state:** the core dashboard, visual insights and shared ownership/live intake are implemented on `main`
+through PR #10 (reviewed 17 Nov 2026, Brisbane). The appearance and feature set remain open to further iteration;
+see the [remaining work in README](README.md#remaining-work-and-next-iterations). This document describes current
+behavior rather than declaring the design final.
+
 ## Information flow
 
 1. **Scan:** priority, customer, issue, waiting time and status. Search names, references and issue descriptions, or
@@ -52,8 +57,9 @@ There are no inline scripts or event handlers. A strict CSP limits scripts, styl
 framing, MIME sniffing, unnecessary browser permissions and caching are restricted. API documentation is self-hosted.
 
 The default synthetic-data demo binds to loopback and rejects remote staff clients. Setting `NRY_STAFF_PASSWORD`
-enables Basic authentication for all staff pages and APIs, including administrative operations. Authenticated audit
-actors come from the server identity, not a caller's chosen name. Use HTTPS and a strong secret for remote access.
+or the distinct-account mapping `NRY_STAFF_ACCOUNTS` enables Basic authentication for all staff pages and APIs,
+including administrative operations. Authenticated audit actors come from the server identity, not a caller's chosen
+name. Use HTTPS and a strong secret for remote access.
 The voice webhook and secret-based case intake use `NRY_WEBHOOK_SECRET`; remote intake and protected staff mode
 refuse intake when that secret is missing. Host validation and same-origin checks reject unsolicited browser writes.
 
@@ -64,9 +70,11 @@ real operations.
 
 ## Validation
 
-Run the three original backend suites, `python test_workspace.py`, and the browser suite described in `README.md`.
-Browser tests use their own SQLite database and process, preserve the developer's data and capture desktop/mobile
-screenshots. The interface has no build step or production Node dependency.
+The [README test commands](README.md#tests) cover Prorio, the API, restart persistence, dashboard access controls,
+insights and multi-officer collaboration. `npm test` runs both browser suites, including the actual customer demo.
+Browser tests use isolated databases/processes, preserve the developer's data and capture desktop/mobile screenshots.
+Manual officer usability and keyboard/screen-reader review remain on the roadmap; automated checks are not a complete
+accessibility assessment. The interface has no build step or production Node dependency.
 
 ## Visual insights and case context
 

@@ -1,7 +1,11 @@
 # Feasibility review: make the existing data useful
 
-The selected implementation extends the officer workspace. The priority queue remains the first screen, and a new
-**Care insights** view offers a graphical route into the work. The review and human approval flow stays intact.
+The implemented dashboard keeps the priority queue as its first screen; **Care insights** offers a graphical route
+into the work. Shared ownership and **Live intake** extend the handoff while retaining human approval.
+
+**Reviewed 17 Nov 2026 (Brisbane)** against `main` at `5c84495`: insights/context were merged in PR #9 and
+collaboration/live intake in PR #10. Further brainstorming, appearance refinement and manual usability review are
+still planned. The [README roadmap](README.md#remaining-work-and-next-iterations) is the current work checklist.
 
 ## What is actually available
 
@@ -12,6 +16,7 @@ The selected implementation extends the officer workspace. The priority queue re
 | `backend/data/cards.json` | 6 | Current/mock block state and replacement delivery milestones | Expected delivery is not proof of arrival |
 | `backend/data/protocols.json` | 31 protocols | Harm points, minimum bands, checks, actions and sources | Procedures do not establish that checks occurred in real life |
 | Saved case and audit records | Varies by local workspace | Current stages, scores, score parts, decisions, pickup history, repeat contacts and protocol suggestions | Small demonstration history; case creation uses the live clock |
+| Case assignments/revisions and intake drafts | Varies by local workspace | Current officer, claim/release/completion events, draft facts and customer confirmation | Local-demo identities are simulations; draft progress comes from scripted scenes unless an external agent is integrated |
 
 Account evidence is anchored to the existing fixed demo clock. Current case age uses the live clock. Both are labelled
 in the interface; joining them into a single unqualified “today” chart would misrepresent the data.
@@ -29,9 +34,26 @@ in the interface; joining them into a single unqualified “today” chart would
 | Visual priority components | Explain why the backend selected a priority | Uses backend score parts; explicitly reconciles caps, floors and overrides instead of treating the subtotal as the final score |
 | Customer context | Bring relevant account, payment and delivery facts into the case | Masks account references, uses only the case's customer, separates reported protection from verified state, and collapses unrelated recent history |
 | Handoff brief | Give the next officer a concise, consistent starting point | Explicitly initiated copy action; no external messaging, no full account numbers or copied account balances; labels simulated data |
+| Shared ownership and Mine filter | Avoid two officers acting on the same case; support a clear handoff | Server checks owner/revision, records releases and completion, and persists claims; one backend worker only |
+| Live intake card | See the need and matched records as a conversation collects them | Unranked drafts stay outside queue metrics; backend-derived evidence is separated from conversation reports; explicit confirmation submits the case once |
+| Live colleague updates | Notice new work, ownership changes and completed cases | Server-sent invalidations fetch fresh snapshots with backup polling; a changed case invalidates an open decision dialog |
 
 The new visuals use local SVG, native meters and semantic controls. They require no chart service, AI API key,
 production JavaScript dependency, new database, frontend build or separate server.
+
+## Next dashboard ideas to evaluate
+
+These are candidates, not implemented features or confirmed work in progress:
+
+| Candidate | Existing evidence it could use | Useful validation |
+|---|---|---|
+| Team workload view | Current claims, active/manual stages and completion actors | Reconcile counts with saved cases; show a small prototype snapshot rather than staff productivity rankings |
+| Visual handoff timeline | Pickup, release, correction, decision and completion audit events | Help the next officer find the last meaningful change without duplicating the full activity log |
+| Saved filters and configurable alerts | Existing queue filters and live completion events | Check whether preferences reduce repeated clicks or alert fatigue; storing preferences would be new work |
+| Further appearance refinement | Current desktop/mobile layouts, progressive disclosure and officer feedback | Test clearer hierarchy and spacing, keyboard/screen-reader flows and reduced motion before adding more visual elements |
+
+Select the next increment from observed officer needs. Existing graphs and basic completion updates are already
+implemented; the candidates above should not be reported as missing core dashboard functionality.
 
 ## Ideas to defer, and what would make them feasible
 
@@ -42,7 +64,7 @@ production JavaScript dependency, new database, frontend build or separate serve
 | “Money saved”, AI accuracy or customer happiness charts | Simulated actions and decisions contain none of these outcome measurements | Verified recovery events, labelled evaluations and consented feedback |
 | Automatic translation or a new voice agent | A preferred language and one supplied translation are not a translation system | An approved translation/voice integration, credentials and a checked customer-facing workflow |
 | Real callbacks, account changes or payment recovery | The repository intentionally mocks these actions | Authorised bank integrations, authentication, permissions, operational controls and end-to-end validation |
-| Production deployment with a shared staff password | The current password option is a prototype control | SSO, individual identities, protocol-owner roles, session controls and monitoring |
+| Production identity and roles | Named Basic accounts exist, but remain prototype controls without customer identity or role separation | SSO/MFA, customer authentication, officer/protocol-owner permissions, session controls and monitoring |
 
 ## Review priorities
 

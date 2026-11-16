@@ -9,7 +9,7 @@ When a customer needs help from their bank, they often explain the problem to a 
 again to a specialist. Meanwhile a customer being scammed *right now* waits in the same line as someone asking when
 their card will arrive.
 
-**Beacon Assist** fixes both, inside the Westpac app the customer is already signed in to, using two AI agents:
+**Beacon Assist** is an independent hackathon prototype for that workflow. The intended in-app experience uses two agents:
 
 - **Clario** (the front door) talks to the customer by text or voice, answers what it safely can from the customer's
   own data or the Westpac knowledge base, protects scam victims first, and writes the problem up **once** as a
@@ -23,6 +23,12 @@ A **Customer Service Officer** then sees the ranked list, reads why each case si
 approval, so proposals improve over time.
 
 > All customer data in this project is made up. No real banking data is used anywhere. The AI never moves money.
+
+**Current delivery status — reviewed 17 Nov 2026 (Brisbane):** the officer **dashboard** and core case workflow are
+implemented and merged into `main`, including graphical insights, shared officer ownership and live intake.
+**Further feature brainstorming, UI appearance refinements and officer usability testing remain open.** The project
+is a working prototype, not a finished banking service. See [build status](#build-status-what-this-repo-runs-today)
+and [remaining work](#remaining-work-and-next-iterations) for the implemented, planned and unverified areas.
 
 ---
 
@@ -41,6 +47,7 @@ approval, so proposals improve over time.
 - [Surge mode (stretch goal)](#surge-mode-stretch-goal)
 - [The demo customers](#the-demo-customers)
 - [Build status: what this repo runs today](#build-status-what-this-repo-runs-today)
+- [Remaining work and next iterations](#remaining-work-and-next-iterations)
 - [Run it](#run-it)
 - [Voice channel (optional)](#voice-channel-optional)
 - [Reference: backend endpoints](#reference-backend-endpoints)
@@ -63,14 +70,18 @@ approval, so proposals improve over time.
 5. **Officers teach, leads approve.** A protocol library that improves safely.
 6. **Surge mode** (stretch goal). An outage becomes one incident, not hundreds of separate calls.
 
-Beacon Assist is not a scripted chatbot with fixed menus. The same opening ("I need to talk to someone") leads to
-different next steps for different customers, the card shows what each agent looked up (for example *"Checked card
-delivery: in transit, due 19 Nov"* or *"Protocol CARD_LOST_STOLEN v1.0"*), and Clario says plainly when something is
+The intended live Clario experience adapts the same opening ("I need to talk to someone") to different customers.
+The current text conversations are scripted demonstrations, backed by real local lookups and case updates. The
+card shows what each agent looked up (for example *"Checked card delivery: in transit, due 19 Nov"* or
+*"Protocol CARD_LOST_STOLEN v2.0"*), and Clario says plainly when something is
 beyond it (*"I can't change your address; I've passed it to an officer"*).
 
 ---
 
 ## Who and what is involved
+
+This describes the target workflow. Customer sign-in, biometrics and banking operations are simulated in this repo;
+Prorio is deterministic code. The external Clario/Retell configuration needs separate verification.
 
 | Part | What it is |
 |---|---|
@@ -128,8 +139,9 @@ beyond it (*"I can't change your address; I've passed it to an officer"*).
    does it.
 10. **Outcome.** Clario tells the customer what was done, in their language, with a reference number. The card's
     status ends at **Done**.
-11. **Learning loop.** Every decision (approved, modified or manual) is written back to the Protocol Database as a
-    suggestion, which a team lead approves before it becomes a rule.
+11. **Learning loop.** Every decision is counted against its protocol. Manual decisions and opted-in modifications
+    that change the action list create suggestions. A protocol owner approves a suggestion after its configured
+    threshold before it becomes a new version; approval alone does not create a suggestion.
 
 **Who does the work (risk rule).** High-priority and risky cases (P1, P2 and P3, for example locking or checking an
 account, scams) are **done by officers**. The lowest-priority, simple cases (P4, for example a delivery date) are
@@ -371,7 +383,7 @@ time, and officers can re-rank.
   ranking visible.
 - Each case shows the card, linked transactions, account signals, the language label, and Prorio's proposed solution
   with the protocol and version it used.
-- Three choices on every case:
+- Three choices for the assigned officer on an open queue case:
 
   | Button | What happens |
   |---|---|
@@ -379,20 +391,25 @@ time, and officers can re-rank.
   | **Modify** | The officer edits the proposal, then approves it. The dashboard asks *"Suggest as a protocol update?"* |
   | **Manual** | The officer ignores the proposal and handles the case themselves. |
 
-- **Re-rank** any case with a required reason (G5). It is logged.
+- **Re-rank** an open queue case with a required reason (G5). It is logged and respects officer ownership.
 - An **audit log** on every case: who did what, when, and what changed.
 
-What makes it more than a ticket queue (all live in `web/`, see [Run it](#run-it)):
+The current dashboard is in `frontend/`, served at `/` and `/officer` (see [Run it](#run-it)):
 
-- **The list re-orders itself.** New cases flash in, and rows slide to their new place when a more urgent case lands.
-- **A score receipt.** Every point is a line, tagged **Verified** (account data), **Said** (the customer's words),
-  **Issue type**, **Rule** or **Clock**, so it's obvious why typing "scam" can't jump the queue.
-- **"View as": Officer, Prorio or Customer.** The same card through three sets of permissions. Prorio's view shows
-  that it never reads the customer's words; the customer's view shows that they never see the score or which fraud
-  alarms tripped. Least privilege and the two-agent firewall, visible in two seconds.
-- **What the agents did.** Prorio's step-by-step trace, and in the customer app each look-up Clario made.
-- **"Officer only" is shown, not hidden.** Anything that opens a door is listed as a task only a person may do.
-- **Corrections arrive live.** When a customer adds to their card, the officer's card highlights the change.
+- **Focused review.** A compact preview leads to a case workspace with Overview, Evidence, Customer context and
+  Activity, keeping detailed checks out of the main queue.
+- **A visual score explanation.** Backend score components, account evidence, conversation cues, gates and overrides
+  explain the final band. Prorio's trace and the protocol sources are available in Evidence.
+- **Care insights.** Interactive urgency, issue, stage, age and decision visuals lead back to the matching cases.
+- **Shared ownership.** Claim a case, see who is handling it, filter **Mine**, release with a handoff note, and see
+  who completed it. Other officers can inspect the case but cannot act on another officer's claim.
+- **Live intake.** Watch an unranked card take shape during a scripted customer conversation. Customer confirmation
+  sends it into the shared queue; the handoff then follows its assignment and outcome.
+- **Live changes.** Same-origin server-sent events refresh case snapshots across officer sessions, with a two-second
+  backup refresh while reconnecting. Customer corrections invalidate outdated decision dialogs.
+
+The earlier `web/officer.html` and `web/static/officer.js` remain historical files; `/officer` serves the current
+dashboard.
 
 ---
 
@@ -467,9 +484,9 @@ next version, "pending approval".
 
 ## Surge mode (stretch goal)
 
-When many cards with the same symptom arrive at once (for example "app not loading" during an outage), Prorio groups
-them into one incident card for the officers, and Clario tells affected customers proactively what is happening.
-Officers handle one incident instead of hundreds of separate cards.
+**Not implemented.** The proposed feature would group many cards with the same symptom (for example "app not
+loading" during an outage) into one incident, with proactive customer updates. The `OUTAGE_INCIDENT` protocol exists,
+but it does not implement incident grouping or notifications.
 
 ---
 
@@ -486,33 +503,52 @@ Six made-up customers. Data lives in `backend/data/` (`customers.json`, `transac
 | CUST-005 | Alex | Replacement card due 19 Nov, with an everyday account and an eSaver account | Extra example for card-delivery questions |
 | CUST-006 | Jordan Lee | Locked out after the password was changed from a new phone; can't buy groceries | `ACCOUNT_ACCESS` with `ESSENTIALS_AT_RISK`: **60, P2** (locked out 40 + device change 10 + care 10) |
 
-The demo proves three things on screen: the officer understands a case from the card in seconds with **zero
-re-asking**; a P4 case goes from question to approved answer in **one click**; a scam victim is **protected in under a
-minute**.
+The demo aims to show a clear handoff without re-asking, an officer-approved P4 answer, and a protective response
+before ranking a scam case. Timings are demonstration targets; simulated protection is not a measured banking outcome.
 
 ---
 
 ## Build status: what this repo runs today
 
-| Part | Status |
-|---|---|
-| **Prorio** (Priority and Protocol), `backend/prorio/` | **Built.** Rule-based, no language model and no outside API. The 0 to 100 score, bands, gates G1 and G3 to G7, verified account signals (including the cross-case payee check), protocol lookup, proposals, who acts (P4: AI after one-click approval), a step-by-step trace, and the "officers teach, leads approve" loop |
-| Backend: intake from Clario, live priority list, decisions, re-rank, audit log, customer status tracker | **Built** |
-| Officer website (`frontend/`): priority queue, concise preview, focused review, evidence/activity tabs, decisions, manual outcomes, re-ranking, protocol library and learning loop | **Built**, served directly by FastAPI; the previous Streamlit dashboard remains as an optional local reference |
-| **Customer app** (`/customer`): Clario's conversation for five demo customers, Face ID and protection timer, card read-back, the glass-box card with live tracker and corrections, the outcome message | **Built.** Customer lines are scripted; Clario's look-ups, the card, Prorio's ranking and the tracker are real |
-| **Side-by-side demo** (`/demo`): customer app and officer dashboard together, with scene buttons and captions | **Built**, for recording the video |
-| Streamlit console (`console/`) | Kept as a fallback |
-| Saving cases, audit logs, suggestions and approved protocol versions (SQLite) | **Built** |
-| Protocol Database (`backend/data/protocols.json`, 31 protocols) | **Built**, and read by Prorio (see `backend/data/PROTOCOLS_SOURCES.md`) |
-| Clario (Retell voice agent) | Built separately; needs the updates listed for Prorio (new bands, `handoff` reply, unauthorised vs disputed charge, card lock, `ESSENTIALS_AT_RISK`) |
-| Clario with a live language model in the text chat | Not in this repo: the live Clario is the Retell agent (see [The live demo](#the-live-demo)) |
-| Westpac knowledge base answers with sources | In the Retell agent (406 crawled pages; see the copyright note in `PROTOCOLS_SOURCES.md`) |
-| Surge mode | Stretch goal |
+Reviewed against remote `main` at [`5c84495`](https://github.com/bharath-blazecode/Team-Astars/commit/5c844952338538b3558fc2d0c0e257620f863852),
+17 Nov 2026 (Brisbane). **Implemented** below means present in this hackathon prototype, not production-ready or
+connected to real banking systems.
+
+| Area | Status | What is available / what remains |
+|---|---|---|
+| **Prorio**, `backend/prorio/` | Implemented | Deterministic 0–100 scoring, bands, gates G1 and G3–G7, ownership-checked account evidence, cross-case payee checks, protocol proposals and an execution trace. G2's protective interaction is simulated in the customer demo |
+| Backend case workflow | Implemented | Final-card intake, priority queue, decisions, manual outcomes, re-ranking, audit trail, customer status and corrections |
+| **Officer dashboard**, `frontend/` | Core implemented; iteration open | Search/filter, concise preview, focused review, evidence/context/activity, completed work, protocol library and learning loop. Further appearance work and new feature ideas are still planned |
+| **Care insights** and case context | Implemented | Graphical urgency/issue/stage/age/decision views, response watch, evidence coverage, score components, masked customer records and an explicit copyable handoff brief |
+| **Multi-officer collaboration** | Implemented | Exclusive claim/release, handoff notes, Mine filter, named completion, live updates and revision checks against stale decisions; limited to one backend worker |
+| **Live intake** | Implemented for scripted demo | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Retell progress still needs integration |
+| **Customer app** and **side-by-side demo** | Implemented, scripted | Five customer scenes, simulated biometrics/protection, read-back, corrections, live case tracker and outcomes at `/customer` and `/demo` |
+| **Protocol Database** and learning loop | Implemented | 31 sourced protocols, decision counts, repeated suggestions, owner approval/rejection, version history and rollback; production role separation is still missing |
+| SQLite persistence | Implemented | Cases, audit logs, claims/revisions, intake drafts, mock account changes, protocol suggestions and approved versions survive restarts |
+| Staff access and browser controls | Prototype controls implemented | Local-only unauthenticated demo; optional individual Basic accounts, server-derived audit identity, intake secret checks, same-origin checks and CSP. SSO/MFA and production roles remain open |
+| Automated verification | Available in repo | Prorio/API/persistence checks, workspace/insights/collaboration backend tests, and two browser suites. The previous implementation run passed 90 browser checks; see [Tests](#tests) to rerun |
+| Legacy Streamlit console and original officer page | Historical reference | Not the recommended dashboard and not equivalent to its current authentication or collaboration controls |
+| External **Clario / Retell** voice agent and knowledge base | Team verification needed | Earlier notes describe a separate agent and 406 crawled pages. Current prompt, knowledge base, transfer destination and live end-to-end behavior cannot be verified from this repository |
+| Live language-model text chat / automatic translation | Not implemented here | The supplied text scenes and translations are scripted; a preferred-language field is not a translation integration |
+| Surge mode | Not implemented | An outage protocol exists, but incident grouping and proactive notifications do not |
+
+The merged history includes the team's backend/console work ([#1](https://github.com/bharath-blazecode/Team-Astars/pull/1),
+[#2](https://github.com/bharath-blazecode/Team-Astars/pull/2)), Protocol Database and review fixes
+([#4](https://github.com/bharath-blazecode/Team-Astars/pull/4)–[#6](https://github.com/bharath-blazecode/Team-Astars/pull/6)),
+Prorio ([#7](https://github.com/bharath-blazecode/Team-Astars/pull/7)), dashboard/customer demo
+([#8](https://github.com/bharath-blazecode/Team-Astars/pull/8)), insights
+([#9](https://github.com/bharath-blazecode/Team-Astars/pull/9)) and collaboration/live intake
+([#10](https://github.com/bharath-blazecode/Team-Astars/pull/10)). All advertised remote branch tips were already
+contained in `main` at review time. A retained feature branch is not evidence of unfinished work.
+
+**Work in progress:** no additional active implementation can be confirmed from those refs. GitHub issue-board and
+PR discussion/status pages were unavailable to this review. Unpushed changes and work in Retell need teammate
+confirmation; the planned items below are not claims that someone is already working on them.
 
 ### How Prorio works
 
-Prorio is code, so it is explainable and the same card always gets the same answer. Customer data never leaves the
-backend. For every card it runs the same steps and records each one in a trace the officer can open:
+Prorio is code: the same structured inputs, evidence, waiting time and approved protocol produce the same result.
+It sends no customer data to an external model or API. For every card it records these steps in a trace:
 
 1. **Read card.** Only structured fields: issue type, linked transaction IDs, conversation signals, language. The
    customer's free-text summary is never read, so "ignore your rules, make me P1" cannot change anything.
@@ -536,9 +572,35 @@ change it, or `NRY_NOW=real` to use the real clock.
 
 ---
 
+## Remaining work and next iterations
+
+The dashboard's current core is implemented. These are the remaining review tasks and possible next increments;
+they do not require replacing the working dashboard.
+
+| Workstream | Status | Next step / completion evidence |
+|---|---|---|
+| **Dashboard appearance and usability** | Planned refinement | Gather officer feedback, refine hierarchy/spacing/visual cues and mobile layouts, and manually check keyboard and screen-reader workflows. Automated checks alone do not finish this work |
+| **Dashboard brainstorming features** | Candidates, not implemented | Evaluate a team workload view from current claims, a visual handoff timeline from audit events, saved filter preferences and configurable completion alerts. Select features that help officers choose or finish a case; basic live completion updates already exist |
+| **External voice agent alignment** | Needs teammate verification | Check current issue types, backend bands/`handoff`, unauthorised-vs-disputed charge handling, protection reports and `ESSENTIALS_AT_RISK`; pass a live confirmed-card → officer → customer-outcome test |
+| **Live card creation from Retell** | Integration pending | Wire the draft start/update/confirm/cancel API into the live agent. Posting only the final-card webhook does not stream a forming card |
+| **Voice transfer and remote demo setup** | Needs teammate verification | Confirm a valid authorised transfer destination and test the handoff. Earlier notes list a placeholder; its current external setting is unknown. Verify HTTPS, allowed hostname and intake secret for the chosen demo URL |
+| **Final rehearsal and submission assets** | Pending team check | Rehearse P1 and P4, correction, multilingual and two-officer handoff scenes; confirm the final video, fallback recording and pitch materials with the team |
+| **Branding and content provenance** | Follow-up recorded | Review the existing [source/copyright notes](backend/data/PROTOCOLS_SOURCES.md) with the mentors, including the separately hosted Retell knowledge base. Repository review cannot establish external permissions |
+| **Production identity and permissions** | Beyond prototype | Replace Basic accounts with SSO/MFA, customer identity, session controls and separate officer/protocol-owner permissions |
+| **Production shared state and operations** | Beyond prototype | Coordinate claims transactionally across workers, share event transport, and validate backup/restore, monitoring and load behavior |
+| **Surge mode; live text/translation; real banking actions** | Optional future scope | Define and validate each integration separately. Current incident protocols, scripted translations and mock actions do not provide these features |
+
+Use [FEATURE_REVIEW.md](FEATURE_REVIEW.md) when choosing new ideas: the current dataset supports case/claim/audit
+visuals, but does not support credible fraud predictions, staffing forecasts, recovery totals or satisfaction metrics.
+Agree owners and acceptance criteria with the team before marking a planned item **in progress** or **done**.
+
+---
+
 ## Run it
 
-**You need:** Python 3 (built and tested on 3.9) and a terminal. Nothing else: no API key, no internet, no build step.
+**You need:** Python (3.12 is the current cloud setup) and a terminal. Installing dependencies needs package access;
+the local scripted demo then runs without an AI API key, external service or frontend build step. Node is needed only
+for the browser test suites.
 
 ### 1. Start the officer workspace and backend
 
@@ -550,7 +612,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The new **Beacon Assist officer workspace** is served at `http://127.0.0.1:8000` by the backend itself. No frontend
+The **Beacon Assist officer dashboard** is served at `http://127.0.0.1:8000` by the backend itself. No frontend
 build, Node server, external font, or third-party script is required. Click **Load sample cases** to add five synthetic
 customers without clearing existing work. The loader is idempotent and is disabled when staff authentication is enabled.
 
@@ -574,7 +636,7 @@ See [the dataset and feature feasibility review](FEATURE_REVIEW.md) for sources,
 
 **Shared care** adds exclusive officer claims, release with a handoff note, a **Mine** filter and live completion
 updates across sessions. In the local demo, use the header selector to simulate Alex Morgan and Taylor Lee in
-separate tabs. Another officer can inspect a claimed case but cannot act on it. The website submits the current case
+separate tabs. Another officer can inspect a claimed case but cannot act on it. The dashboard submits the current case
 revision with decisions, preventing an old dialog from overwriting newer work.
 
 **Live intake** shows a customer card taking shape before confirmation: the developing need, matched payment records,
@@ -599,18 +661,19 @@ framing for the demo; other sites cannot frame them. The root `/` remains the st
    Open Minh and **Modify plan** (add a callback) to create a suggestion, then show **Learning loop** and **Protocol library**.
 4. To show a lead approving a new protocol version in one go, start the backend with `NRY_SUGGEST_THRESHOLD=1`.
 
-The yellow caption strip says what is happening in each scene, so the video reads without a voice-over. The phone
-footer says plainly that the customer's lines are scripted and everything else is live.
+The caption strip explains each scene. Conversation lines and supplied translations are scripted; backend lookups,
+draft/case updates, ranking and officer decisions operate on the local prototype.
 
 ### The live demo
 
 For the on-site pitch, everything runs on one laptop, exactly as above. Only a live Clario needs the internet.
 
-- **Live Clario = the Retell agent.** It already has its own language model, voice, language detection and knowledge
-  base, and its key stays in Retell, so no AI key is needed in this repo. It sends each card to `/webhook/retell`.
+- **Live Clario = the separately configured Retell agent.** Earlier team notes describe its own language model,
+  voice, language detection and knowledge base; verify the current configuration with its owner. Its key stays in
+  Retell, so no AI key is needed in this repo. Final cards can be sent to `/webhook/retell`.
   Retell can't reach `localhost`, so open a tunnel (for example `ngrok http 8000`) and use your phone's hotspot, not
   the venue Wi-Fi. Open `/customer?track=<reference>` to show the customer's live card while the officer works.
-- **Hand a judge the phone.** Remote access needs HTTPS, `NRY_STAFF_PASSWORD`, the intended hostname in
+- **Hand a judge the phone.** Remote access needs HTTPS, `NRY_STAFF_PASSWORD` or `NRY_STAFF_ACCOUNTS`, the intended hostname in
   `NRY_ALLOWED_HOSTS`, and `NRY_WEBHOOK_SECRET` for intake. The default demo permits only loopback clients.
   This remains a shared staff demonstration, not customer authentication for a deployed bank service.
 - **Fallback.** If the internet or Retell fails, the scripted scenes on `/demo` still run the real backend, and the
@@ -619,8 +682,8 @@ For the on-site pitch, everything runs on one laptop, exactly as above. Only a l
 
 ### 2. Optional: legacy Streamlit dashboard
 
-The previous dashboard remains available for reference. It is not needed for the new website. It does not implement
-the new staff sign-in; use the same-origin website when authentication is enabled.
+The previous Streamlit console remains available for reference. It does not implement the current staff sign-in or
+collaboration UI; use the same-origin dashboard for the current workflow.
 
 ```bash
 cd console
@@ -630,7 +693,7 @@ pip install -r requirements.txt
 streamlit run officer_app.py
 ```
 
-It normally runs at `http://localhost:8501`. The recommended workspace is the new website on port 8000.
+It normally runs at `http://localhost:8501`. The recommended dashboard is on port 8000.
 
 ### 3. Send in cards by hand
 
@@ -650,19 +713,23 @@ curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_i
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-001","customer_name":"Maria R.","issue_type":"SCAM_IN_PROGRESS","linked_transactions":"TX-9001","risk_signals":"CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES","summary_en":"Caller says someone claiming to be from Westpac told her to move her savings.","case_reference":"WGM-0412"}'
 ```
 
-Watch the dashboard: Priya, Minh and Sam appear, then Maria arrives and takes the top spot on the next refresh (within
-ten seconds in the new workspace, two in the legacy dashboard). Open
+Watch the dashboard: Priya, Minh and Sam appear, then Maria arrives and takes the top spot on a live event refresh
+(or the two-second backup refresh while streaming is unavailable). Open
 her case, read the reasons and evidence, and choose **Review & approve**, then confirm. Review Sam's routine case to
 see the **AI acts after your approval** plan. More examples are in [`backend/README.md`](backend/README.md).
 
 ### Starting over
 
-Cases are saved, so restarting the backend does **not** clear the queue. Press **Reset demo** on the dashboard or the
-demo page, or:
+Cases and drafts are saved, so restarting the backend does **not** clear them. For a clean rehearsal, press
+**Reset demo** on `/demo`, or use the protected reset API. This clears cases, drafts, mock account changes,
+suggestions and approved protocol versions:
 
 ```bash
 curl -X POST localhost:8000/admin/reset
 ```
+
+These examples assume local demo mode. With staff authentication enabled, use staff credentials for reset and other
+staff APIs. Intake requests additionally require the configured `x-webhook-secret`; do not put secrets in Git.
 
 ---
 
@@ -671,9 +738,10 @@ curl -X POST localhost:8000/admin/reset
 The plan is **text first**. Voice reaches Clario only if the existing Retell voice agent is retuned to this design and
 a test call passes in time; otherwise the demo runs by text and voice stays on the roadmap.
 
-The Retell agent was built for the earlier plan, so its prompt still uses the old bands and lets the model estimate
-the score. Whatever it sends, Prorio **recomputes the score itself** and never ranks on the agent's estimate. The
-agent should use the band and `handoff` in the webhook reply instead of its own estimate.
+Earlier notes describe a Retell agent built for the old plan. Its current prompt and deployment are outside this
+repo, so check alignment with its owner. Whatever it sends, Prorio **recomputes the score itself** and never ranks
+on the agent's estimate. The agent should use the backend band and `handoff`, distinguish unauthorised from disputed
+charges, and send the documented protection reports and care cues.
 
 If it is used, it sends the card by calling a **custom function** at the end of the conversation:
 
@@ -683,7 +751,12 @@ If it is used, it sends the card by calling a **custom function** at the end of 
    for completion**.
 3. Define its parameters using the field names below, and tell the agent to call it once, after the customer confirms
    the card.
-4. If you set `NRY_WEBHOOK_SECRET`, add an `x-webhook-secret` header with the same value.
+4. Configure `NRY_WEBHOOK_SECRET` and send it in `x-webhook-secret`. Remote or staff-authenticated intake refuses
+   requests if the secret is unconfigured; a configured secret is required even for local intake.
+
+To show a card **while a live voice call is happening**, also integrate the draft start/update/confirm/cancel
+endpoints. The final-card function alone cannot populate Live intake before confirmation. The scripted text scenes
+already use that draft flow. A real voice transfer and outcome delivery still need an end-to-end team test.
 
 | Field | Meaning |
 |---|---|
@@ -720,7 +793,7 @@ card is updated and its reference returned (gate G6).
 | GET | `/case/{id}/proposal` | Prorio's proposed solution: protocol and version, actions, officer tasks, checks, customer message, sources |
 | GET | `/case/{id}/trace` | What Prorio did, step by step |
 | GET | `/case/{id}/status` | The customer's view: Received, Ranked, With an officer, Action taken, Done, and the outcome. No score |
-| POST | `/case/{id}/pickup` | An officer opens the case (`{"officer": "name"}`); the customer sees "With an officer" |
+| POST | `/case/{id}/pickup` | Claim an active case exclusively; accepts `expected_revision`. Authenticated identity determines the owner; the customer sees "With an officer" |
 | POST | `/case/{id}/decision` | `{"decision": "APPROVE" \| "MODIFY" \| "MANUAL", "actions": [...], "officer": "name", "note": "...", "suggest_update": true}` |
 | POST | `/case/{id}/complete` | Close a Manual case: `{"note": "what was done"}` (sent to the customer) |
 | POST | `/case/{id}/rerank` | `{"band": "P1", "reason": "..."}` or `{"score": 90, "reason": "..."}` (0 to 100). Reason required |
@@ -732,7 +805,7 @@ card is updated and its reference returned (gate G6).
 | POST | `/suggestions/{id}/approve` | Protocol owner approves (only once it has been suggested enough times); creates a new version |
 | POST | `/suggestions/{id}/reject` | Protocol owner rejects |
 | GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, demo clock |
-| GET | `/` | The new same-origin officer workspace |
+| GET | `/` | The same-origin officer dashboard |
 | GET | `/workspace/session` | Current staff identity and local demo status; never credentials |
 | GET | `/workspace/cases` | Compact active, manual and completed case list |
 | GET | `/workspace/insights` | Read-only analytics across saved cases; ownership-checked payment totals and live response watch |
@@ -747,10 +820,15 @@ card is updated and its reference returned (gate G6).
 | POST | `/demo/seed` | Add synthetic examples once, preserving existing work; local demo mode only |
 | GET | `/clario/{customer_id}/lookup` | Clario's read-only look-up for the signed-in customer: first name, masked accounts, card delivery, payees, recent transactions. No balances |
 | GET | `/demo`, `/officer`, `/customer` | Recording demo, redesigned officer workspace and retained customer app |
-| POST | `/admin/reset` | Clears all cases, demo account changes, suggestions and approved versions (no password; demo only) |
+| POST | `/admin/reset` | Rehearsal reset: clears cases, drafts, mock account changes, suggestions and approved versions; inherits staff authentication/local-only access |
 
-Errors: `404` not found, `409` already decided or not ready, `422` invalid request (unknown issue, missing reason, an
-action not on the allowed list). Searchable, self-hosted API/schema reference: `http://localhost:8000/docs` while
+Case claims, releases, decisions, manual completions and re-ranks accept an optional `expected_revision`; the current
+dashboard always supplies it. Draft updates, confirmation and cancellation require it. Ownership checks apply even
+to legacy case clients that omit a revision. A second officer must wait for release before acting on claimed work.
+
+Errors include `401` missing/invalid credentials or intake secret, `403` denied origin/access, `404` not found,
+`409` ownership/revision conflict, already decided or not ready, `422` invalid request, and `503` missing required
+intake-secret configuration. Searchable, self-hosted API/schema reference: `http://localhost:8000/docs` while
 the backend runs. The OpenAPI document is at `/openapi.json`.
 
 Executable actions (all mocked, they only record that they happened): `ACTIVATE_SAFEBLOCK`, `BLOCK_CARD`,
@@ -764,9 +842,9 @@ Executable actions (all mocked, they only record that they happened): `ACTIVATE_
 
 - **Customer data** (accounts, transactions, cards) is read from `backend/data/` on every start.
 - **Cases** are saved in a small **SQLite** file, `backend/nry.db`, created on first start and not committed to git.
-  Cases, audit logs, re-ranks, mocked account changes, protocol suggestions and approved protocol versions survive a
-  restart. `protocols.json` itself is never written by code.
-- To empty it, use **Reset demo data** or `POST /admin/reset`. Set `NRY_DB` to use a separate file.
+  Cases, audit logs, claims/revisions, intake drafts, re-ranks, mocked account changes, protocol suggestions and approved
+  protocol versions survive a restart. `protocols.json` itself is never written by code.
+- To empty it for rehearsal, use **Reset demo** on `/demo` or the protected `POST /admin/reset`. Set `NRY_DB` to use a separate file.
 
 ---
 
@@ -776,16 +854,16 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 
 | Variable | Default | Used by | Meaning |
 |---|---|---|---|
-| `NRY_API` | `http://localhost:8000` | Dashboard | Where the backend is |
-| `NRY_OFFICER` | `officer` | Dashboard | Name written in the audit log for decisions |
+| `NRY_API` | `http://localhost:8000` | Legacy Streamlit only | Backend address; the current dashboard uses same-origin requests |
+| `NRY_OFFICER` | `Demo officer` (`officer` in Streamlit) | Backend local demo / legacy console | Default demo audit name. Authenticated accounts determine their own identity; the current local dashboard can simulate per-tab officers |
 | `NRY_DB` | `backend/nry.db` | Backend | Where the database file lives |
-| `NRY_WEBHOOK_SECRET` | none (open) | Backend | If set, `/webhook/retell` and `/case` need this value in an `x-webhook-secret` header |
+| `NRY_WEBHOOK_SECRET` | unset (local demo only) | Backend | Required for remote or staff-authenticated intake; protects `/webhook/retell`, `/case` and draft writes with `x-webhook-secret` |
 | `NRY_NOW` | `2026-11-15T12:00:00Z` | Backend | The demo clock for account evidence. `real` uses the real clock |
 | `NRY_SUGGEST_THRESHOLD` | `3` | Backend | How many times a protocol suggestion must be made before the owner can approve it. Set `1` for a quick demo |
 | `NRY_CORS_ORIGINS` | none | Backend | Comma-separated web origins allowed to call the API from a browser. Not needed: the pages are served by the backend itself |
-| `NRY_STAFF_PASSWORD` | unset | Backend / new website | Enables HTTP Basic staff authentication for the website, staff APIs, docs and administration. Use a strong secret and HTTPS for remote access; never commit it |
-| `NRY_STAFF_USER` | `officer` | Backend / new website | Staff username when password protection is enabled; this authenticated identity is used in audit records |
-| `NRY_STAFF_ACCOUNTS` | unset | Backend / new website | Secure JSON mapping of usernames to distinct passwords for prototype staff accounts. Takes precedence over the single account; invalid configuration fails closed. Never commit values |
+| `NRY_STAFF_PASSWORD` | unset | Backend / dashboard | Enables HTTP Basic staff authentication for the dashboard, staff APIs, docs and administration. Use a strong secret and HTTPS for remote access; never commit it |
+| `NRY_STAFF_USER` | `officer` | Backend / dashboard | Staff username for the single-account password option; used in authenticated audit records |
+| `NRY_STAFF_ACCOUNTS` | unset | Backend / dashboard | Secure JSON mapping of usernames to distinct passwords for prototype staff accounts. Takes precedence over the single account; invalid configuration fails closed. Never commit values |
 | `NRY_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1],testserver` | Backend | Comma-separated hostnames accepted by the server. Add the actual hostname when placing the application behind an HTTPS proxy; avoid wildcards |
 
 Without configured staff accounts or a staff password, staff access is restricted to loopback clients. Secret-authenticated intake can still be
@@ -852,16 +930,27 @@ Team-Astars/
 │   │   ├── learning.py   officers teach, leads approve
 │   │   └── selftest.py   python -m prorio.selftest
 │   ├── store.py          keeps cases, runs Prorio, officer decisions, re-ranks and the status tracker
+│   ├── intake_drafts.py  durable unranked drafts, confirmation and retry recovery
+│   ├── workspace_events.py  single-worker event invalidations for live staff updates
+│   ├── workspace_insights.py  aggregate graphics and scoped customer context
+│   ├── web_security.py   staff identity, intake access and browser protections
 │   ├── models.py         the shape of incoming requests
 │   ├── mock_data.py      read-only look-ups over the demo customers and transactions
 │   ├── db.py             saving to and loading from the SQLite file
 │   ├── data/             customers.json, transactions.json, cards.json (made-up data),
 │   │                     protocols.json (Protocol Database), PROTOCOLS_SOURCES.md (its sources and copyright rules)
-│   ├── test_api.py  test_db.py
+│   ├── test_api.py  test_db.py  test_workspace.py  test_insights.py  test_collaboration.py
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
-├── frontend/             the new website: self-hosted HTML, CSS and JavaScript; no build step
+├── frontend/             current officer dashboard: self-hosted HTML, CSS and JavaScript; no build step
+│   ├── app.js            queue, review, claims, decisions and event refresh
+│   ├── visuals.js       interactive care insights and score/context visuals
+│   ├── intake.js        live draft-card presentation
 │   └── tests/            isolated browser workflow checks
+├── web/                  retained customer app and side-by-side demo; original officer files are historical
+├── DESIGN.md             dashboard interaction, appearance and security boundaries
+├── FEATURE_REVIEW.md     data inventory, implemented additions and candidate features
+├── COLLABORATION_PLAN.md  implemented shared ownership/live intake walkthrough
 └── console/             optional legacy Streamlit interface
     ├── officer_app.py    the officer dashboard
     └── requirements.txt
@@ -876,28 +965,34 @@ Team-Astars/
 | Scoring cards in code from account data, with written reasons | Customer log-in and Face ID checks |
 | The queue order, bands, gates and waiting-time rule | SafeBlock, card locks, disputes, callbacks and messages: they only *record* that they happened |
 | Officer decisions, re-ranking and the audit log | Payment recall and scam reports: always **drafts**; money is never moved |
-| Saving cases to a database | All the banking data: it's invented |
+| Claims, releases, completion updates and stale-decision checks | Local officer switching: a labelled per-tab simulation, not authentication |
+| Draft persistence, confirmation and live card updates | Text dialogue, translated lines and the customer read-back interaction are scripted |
+| Saving cases, drafts and protocol versions to a database | All the banking data: it's invented |
 
-Guardrails throughout: the customer is told they are talking to an AI; answers come only from the customer's data or
-the Westpac knowledge base; the AI never moves money; "talk to a person" is always available; every action is logged.
+The scripted experience labels AI interaction and offers a path to a person. Prorio uses structured fields and
+ownership-checked account evidence rather than treating the summary as instructions. The external agent's grounding
+and behavior need separate validation; they are not established by the local demo.
 
 ---
 
 ## Known limits and future work
 
-- **Prototype access control.** The new website supports optional staff authentication and otherwise restricts staff
+- **Prototype access control.** The dashboard supports optional staff authentication and otherwise restricts staff
   access to loopback clients. This is not production SSO or role-based banking access. The legacy Streamlit app is for
-  local reference only. Reset is available through the protected API, not as a prominent website button.
+  local reference only. Reset is available through the protected API and demo page, not as a dashboard button.
 - **Shared updates use server-sent events.** Connected clients refresh age-based data every ten seconds; a two-second
   backup refresh is used while reconnecting. Background tabs refresh when visible. The legacy Streamlit queue polls
   every two seconds.
 - **One machine, one backend worker.** Claims and event invalidations use a process-local lock/counter and SQLite.
   Production workers need shared transactional ownership and event transport.
-- **Demo dates.** Sample transactions are dated 9 to 15 November 2026. Scoring uses a fixed demo clock (`NRY_NOW`), so
-  it is unaffected; the plain "recent transactions" look-up uses the real clock and comes back empty once the dates
-  are old.
-- **Not yet built:** see [Build status](#build-status-what-this-repo-runs-today).
-- The Retell agent's transfer number (`+61400000000`) is a placeholder and always fails.
+- **Demo dates.** Account evidence, the Clario lookup endpoint and customer context use the fixed demo clock
+  (`NRY_NOW`, default 15 Nov 2026). Case waiting time uses the live clock. Setting `NRY_NOW=real` makes account recency
+  depend on the actual date, so old sample transactions may disappear from recent lookups or score differently.
+- **Further work is still open:** dashboard brainstorming and appearance refinement, manual usability/accessibility
+  review, external Retell verification and optional integrations are tracked in
+  [Remaining work](#remaining-work-and-next-iterations). Implemented core flows do not mean the dashboard is final.
+- **External voice settings are unverified.** Earlier notes contain a placeholder transfer number; verify the current
+  Retell setup with its owner before claiming a working voice handoff.
 
 ---
 

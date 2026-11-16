@@ -6,12 +6,17 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-This also serves the new officer website at `http://127.0.0.1:8000`. No frontend build or separate UI process is
+This also serves the officer dashboard at `http://127.0.0.1:8000`. No frontend build or separate UI process is
 needed. **Load sample cases** adds a synthetic queue without resetting existing work. The old Streamlit dashboard
 is optional. The API/schema reference at `/docs` is self-hosted and follows the same staff access controls.
 
+**Status reviewed 17 Nov 2026 (Brisbane):** backend case handling, Prorio, persistence, care insights, shared officer
+claims and live intake are implemented on `main` through PR #10 (`5c84495`). This remains a single-worker prototype.
+The current status and remaining dashboard/integration work are tracked in the
+[main README](../README.md#remaining-work-and-next-iterations); the external Retell configuration is not stored here.
+
 Checks: `python -m prorio.selftest` (Prorio's scoring, gates and proposals), `python test_api.py` (the API end to end),
-`python test_db.py` (persistence across a restart), `python test_workspace.py` (website integration and security).
+`python test_db.py` (persistence across a restart), `python test_workspace.py` (dashboard integration and security).
 `python test_insights.py` covers the analytics, customer scope, payment totals and evidence/live-clock boundaries.
 `python test_collaboration.py` covers officer claim races, ownership transfer, stale decisions, identity, drafts and restart recovery.
 Browser tests: `cd ../frontend && npm ci && npm test` (Node 22.12+ and Chromium). All customer data is synthetic.
@@ -34,27 +39,32 @@ claims and mutations; ownership and already-decided checks also protect legacy c
 `GET /workspace/insights` aggregates the saved workspace under the case-store lock. It does not reset cases or execute
 actions. `GET /case/{id}/context` returns masked accounts and owned transactions for that case's customer, with the
 fixed evidence clock and a separate current snapshot time. Both endpoints inherit staff access control. See
-`../FEATURE_REVIEW.md` for metric definitions and limits.
+[FEATURE_REVIEW.md](../FEATURE_REVIEW.md) for metric definitions and limits.
 
 ## Prorio
 
-`prorio/` is the Priority and Protocol agent. It is plain, deterministic code: no language model and no outside API,
-so customer data stays in the backend. See "How Prorio works" in the top-level README. Scores are judged against a
+`prorio/` is the Priority and Protocol agent. It is plain, deterministic code: no language model and no outside API.
+It sends no data to an external model. See "How Prorio works" in the top-level README. Scores are judged against a
 fixed demo clock (`NRY_NOW`, default 15 Nov 2026 12:00 UTC); waiting time uses the real clock.
 
 ## Database
 
-SQLite (`backend/nry.db`, stdlib, created on first run, git-ignored). Cases and their audit logs, the mock account
-changes (SafeBlock, blocked cards, draft reference counters), protocol suggestions and approved protocol versions
-survive a backend restart. It is a single connection behind a lock: fine for a demo, not for concurrent production
-writers. Records saved by the earlier backend are skipped on start; press "Reset demo data" to clear them.
+SQLite (`backend/nry.db`, stdlib, created on first run, git-ignored). Cases and their audit logs, officer claims and
+revisions, intake drafts, mock account changes (SafeBlock, blocked cards, draft reference counters), protocol suggestions
+and approved protocol versions survive a backend restart. It is a single connection behind a lock: fine for a demo, not for concurrent production
+writers. Pre-Prorio case records are skipped on start; current older case records acquire ownership/revision defaults
+from their audit history where available.
 
-Wipe it for a clean rehearsal: `curl -X POST localhost:8000/admin/reset` (or "Reset demo data" in the dashboard
-sidebar). That endpoint has no auth. `NRY_DB=/path/x.db` points at a different file.
+For a clean rehearsal, `curl -X POST localhost:8000/admin/reset` or **Reset demo** on `/demo` clears cases, drafts,
+mock changes, suggestions and approved versions. The endpoint inherits staff authentication and local-only demo
+access; authenticated requests require staff credentials. The current dashboard has no reset button.
+`NRY_DB=/path/x.db` points at a different file.
 
 ## Trigger the demo without Clario
 
 Same body works on `/case` (testing, returns the full card) and `/webhook/retell` (Clario, returns a short reply).
+These examples assume unauthenticated loopback demo mode. Configured intake secrets must be sent in
+`x-webhook-secret`; remote or staff-authenticated intake requires the secret to be configured.
 
 ```
 # Sam: card delivery answered by Clario. Stored, NOT in the queue
@@ -82,6 +92,12 @@ curl -s localhost:8000/queue
 ```
 
 ## Officer actions
+
+Use the current dashboard for the complete claim/review workflow. The API also supports `/pickup` and `/release`;
+only the assigned officer may change a claimed case. Current clients should send `expected_revision` from the last
+case read on every mutation. Staff authentication determines the audit actor, regardless of a body-supplied name.
+The examples below are local-demo calls on unclaimed cases; substitute current references and the owning identity
+when following up work already claimed or decided.
 
 ```
 # what Prorio proposes, and what it did
