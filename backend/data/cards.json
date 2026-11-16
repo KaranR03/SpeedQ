@@ -1,0 +1,7 @@
+[
+  {"customer_id": "CUST-002", "card": "Debit Mastercard", "mask": "...4821", "kind": "replacement", "ordered": "2026-11-10", "dispatched": "2026-11-12", "carrier": "Australia Post", "status": "In transit, at Brisbane mail centre", "expected": "2026-11-19", "blocked": false},
+  {"customer_id": "CUST-003", "card": "Credit card", "mask": "...5560", "kind": "existing", "status": "Active", "blocked": false},
+  {"customer_id": "CUST-001", "card": "Debit Mastercard", "mask": "...3302", "kind": "existing", "status": "Active", "blocked": false},
+  {"customer_id": "CUST-004", "card": "Debit Mastercard", "mask": "...6120", "kind": "existing", "status": "Active", "blocked": false},
+  {"customer_id": "CUST-005", "card": "Debit Mastercard", "mask": "...4821", "kind": "replacement", "ordered": "2026-11-10", "dispatched": "2026-11-12", "carrier": "Australia Post standard mail", "status": "Dispatched, in transit to home address on file (Brisbane)", "expected": "2026-11-19", "blocked": false}
+]
