@@ -3,9 +3,11 @@
 Cases live in memory and are saved to SQLite (db.py) so they survive a restart.
 """
 import threading
+import copy
 
 import db
 import mock_data as md
+import workspace_events
 from models import RetellPayload
 from prorio import agent, learning, protocols
 from prorio.propose import ACTIONS
@@ -34,6 +36,26 @@ def _new_id():
 
 def _now_str():
     return md.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _save(case):
+    case["revision"] = case.get("revision", 0) + 1
+    case["updated_at"] = _now_str()
+    db.save_case(case)
+    workspace_events.changed()
+
+
+def _check_owner(case, actor, expected_revision=None):
+    if expected_revision is not None and case.get("revision", 1) != expected_revision:
+        raise RuntimeError("This case changed. Refresh it and review the latest version before continuing.")
+    owner = case.get("assignment")
+    if owner and owner["officer"] != actor:
+        raise RuntimeError(f"This case is assigned to {owner['officer']}. Choose another case or ask them to release it.")
+
+
+def _assign(case, actor):
+    if not case.get("assignment"):
+        case["assignment"] = {"officer": actor, "claimed_at": _now_str()}
 
 
 def _params(action, linked, params=None):
@@ -105,7 +127,7 @@ def _find_repeat(p: RetellPayload):
                 None)
 
 
-def create_case(p: RetellPayload):
+def create_case(p: RetellPayload, intake_draft_id=None):
     if p.issue_type not in protocols.ISSUE_TYPES:
         raise ValueError(f"unknown issue_type {p.issue_type!r}")
     cust = md.get_customer(p.customer_id) or {}
@@ -116,7 +138,7 @@ def create_case(p: RetellPayload):
     with _lock:
         existing = _find_repeat(p)
         if existing:
-            return _update_repeat(existing, p, linked, clario)
+            return _update_repeat(existing, p, linked, clario, intake_draft_id)
         cid = p.case_reference if p.case_reference and p.case_reference not in CASES else _new_id()
         case = {
             "case_id": cid,
@@ -144,8 +166,12 @@ def create_case(p: RetellPayload):
             "outcome": None,
             "contacts": 1,
             "customer_corrections": [],
+            "assignment": None,
+            "completed_by": None,
+            "completed_at": None,
             "audit_log": [],
             "_caller_signals": _split(p.risk_signals),
+            "_intake_draft_ids": [intake_draft_id] if intake_draft_id else [],
         }
         _stage(case, "RECEIVED")
         _draft(case)
@@ -157,11 +183,11 @@ def create_case(p: RetellPayload):
                                                             "band": case["priority"]["band"]},
                result=case["proposed_solution"]["explanation"])
         CASES[cid] = case
-        db.save_case(case)
+        _save(case)
     return case
 
 
-def _update_repeat(case, p, linked, clario):
+def _update_repeat(case, p, linked, clario, intake_draft_id=None):
     before = {"score": case["priority"]["score"], "band": case["priority"]["band"]}
     case["linked_transactions"] += [t for t in linked if t not in case["linked_transactions"]]
     case["_caller_signals"] += [s for s in _split(p.risk_signals) if s not in case["_caller_signals"]]
@@ -172,6 +198,8 @@ def _update_repeat(case, p, linked, clario):
         case["clario_reported"][k] = case["clario_reported"][k] or getattr(p, k)
     case["retell_estimate"] = clario
     case["customer_confirmed"] = case["customer_confirmed"] or p.customer_confirmed
+    if intake_draft_id and intake_draft_id not in case.setdefault("_intake_draft_ids", []):
+        case["_intake_draft_ids"].append(intake_draft_id)
     after = lambda: {"score": case["priority"]["score"], "band": case["priority"]["band"]}
     if p.correction:  # glass-box card: the customer corrected their own card through Clario
         case.setdefault("customer_corrections", []).append({"ts": _now_str(), "text": p.correction[:500]})
@@ -184,7 +212,7 @@ def _update_repeat(case, p, linked, clario):
         _audit(case, "AI (Prorio)", "REPEAT_CONTACT", before=before, after=after(),
                result=f"Customer contacted again about the same issue (contact {case['contacts']}); card updated, "
                       f"not duplicated")
-    db.save_case(case)
+    _save(case)
     case["_updated_existing"] = True  # read (and removed) by the webhook reply; never saved
     return case
 
@@ -255,7 +283,7 @@ def run_action(case, name, params, actor):
 STATUS_FOR = {"APPROVE": "APPROVED", "MODIFY": "MODIFIED", "MANUAL": "MANUAL"}
 
 
-def decide(case_id, decision, actions, actor, note="", suggest_update=True):
+def decide(case_id, decision, actions, actor, note="", suggest_update=True, expected_revision=None):
     """KeyError -> 404, RuntimeError -> 409, ValueError -> 422."""
     if decision not in STATUS_FOR:
         raise ValueError(f"unknown decision {decision!r}")
@@ -265,6 +293,7 @@ def decide(case_id, decision, actions, actor, note="", suggest_update=True):
             raise KeyError(case_id)
         if case["status"] not in QUEUE_STATUSES:
             raise RuntimeError(f"case already {case['status']}")
+        _check_owner(case, actor, expected_revision)
         rescore(case)
         linked = case["linked_transactions"]
         if decision == "APPROVE":
@@ -278,6 +307,7 @@ def decide(case_id, decision, actions, actor, note="", suggest_update=True):
             todo = [(a.action, _params(a.action, linked, a.params)) for a in actions]
         else:
             todo = []
+        _assign(case, actor)
         executor = case["priority"]["executor"]
         doer = f"AI (Prorio), approved by {actor}" if executor == "AI_AFTER_APPROVAL" else actor
         _audit(case, actor, f"DECISION_{decision}", before={"status": case["status"]},
@@ -290,6 +320,7 @@ def decide(case_id, decision, actions, actor, note="", suggest_update=True):
         if case["card_status"]["stage"] != "WITH_OFFICER":
             _stage(case, "WITH_OFFICER")
         if decision != "MANUAL":
+            case["completed_by"], case["completed_at"] = actor, _now_str()
             _stage(case, "ACTION_TAKEN")
             case["outcome"] = {"message": case["proposed_solution"]["customer_message"],
                                "language": case["language"], "sent_at": _now_str()}
@@ -300,27 +331,49 @@ def decide(case_id, decision, actions, actor, note="", suggest_update=True):
                    result=f"Suggested as a protocol update for {sug['issue_type']} v{sug['from_version']} "
                           f"-> v{sug['proposed_version']} ({sug['count']} of {sug['threshold']}, pending approval)")
             case["protocol_suggestion"] = sug["id"]
-        db.save_case(case)
+        _save(case)
     return case
 
 
-def pick_up(case_id, actor):
+def pick_up(case_id, actor, expected_revision=None):
     """An officer opens the case: the customer's card shows "With an officer"."""
     with _lock:
         case = CASES.get(case_id)
         if not case:
             raise KeyError(case_id)
-        if case["status"] not in QUEUE_STATUSES:
+        if case["status"] not in QUEUE_STATUSES | {"MANUAL"} or case["card_status"]["stage"] == "DONE":
             raise RuntimeError(f"case already {case['status']}")
-        if case["card_status"]["stage"] != "WITH_OFFICER":
-            case["status"] = "IN_REVIEW"
+        _check_owner(case, actor, expected_revision)
+        if not case.get("assignment"):
+            _assign(case, actor)
+            if case["status"] != "MANUAL":
+                case["status"] = "IN_REVIEW"
             _stage(case, "WITH_OFFICER")
             _audit(case, actor, "PICKED_UP", result=f"{actor} is working on the case")
-            db.save_case(case)
+            _save(case)
     return case
 
 
-def complete(case_id, actor, note):
+def release(case_id, actor, note="", expected_revision=None):
+    with _lock:
+        case = CASES.get(case_id)
+        if not case:
+            raise KeyError(case_id)
+        if case["status"] not in QUEUE_STATUSES | {"MANUAL"} or case["card_status"]["stage"] == "DONE":
+            raise RuntimeError("Only active cases can be released.")
+        _check_owner(case, actor, expected_revision)
+        if not case.get("assignment"):
+            raise RuntimeError("This case has no assigned officer.")
+        case["assignment"] = None
+        if case["status"] != "MANUAL":
+            case["status"] = "QUEUED"
+        _stage(case, "RANKED")
+        _audit(case, actor, "CASE_RELEASED", result=f"{actor} returned the case to the shared queue" + (f": {note}" if note else ""))
+        _save(case)
+    return case
+
+
+def complete(case_id, actor, note, expected_revision=None):
     """Close a case the officer handled manually."""
     note = (note or "").strip()
     if not note:
@@ -331,18 +384,22 @@ def complete(case_id, actor, note):
             raise KeyError(case_id)
         if case["status"] != "MANUAL" or case["card_status"]["stage"] == "DONE":
             raise RuntimeError("only an open manual case can be completed")
+        _check_owner(case, actor, expected_revision)
+        _assign(case, actor)
         _stage(case, "ACTION_TAKEN")
         case["outcome"] = {"message": note, "language": case["language"], "sent_at": _now_str()}
         _stage(case, "DONE")
+        case["completed_by"], case["completed_at"] = actor, _now_str()
         _audit(case, actor, "MANUAL_COMPLETE", result=note)
-        db.save_case(case)
+        _save(case)
     return case
 
 
 def public(case):
     """JSON-safe copy without internal fields."""
-    out = {k: v for k, v in case.items() if not k.startswith("_")}
-    out["created_at"] = case["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    with _lock:
+        out = copy.deepcopy({k: v for k, v in case.items() if not k.startswith("_")})
+        out["created_at"] = case["created_at"].strftime("%Y-%m-%dT%H:%M:%SZ")
     return out
 
 
@@ -351,7 +408,9 @@ def customer_view(case):
     return {"case_reference": case["case_id"], "issue_type": case["issue_type"], "summary": case["summary_en"],
             "summary_customer_lang": case["summary_customer_lang"], "status": case["card_status"]["label"],
             "stage": case["card_status"]["stage"], "history": case["card_status"]["history"],
-            "outcome": case["outcome"], "corrections": case.get("customer_corrections", [])}
+            "outcome": case["outcome"], "corrections": case.get("customer_corrections", []),
+            "assigned_officer": (case.get("assignment") or {}).get("officer"),
+            "completed_by": case.get("completed_by")}
 
 
 def queue():
@@ -371,7 +430,9 @@ def workspace():
             rescore(c)
         cases = sorted(CASES.values(), key=lambda c: (-c["priority"]["score"], c["created_at"]))
         return [{**{k: c[k] for k in fields}, "created_at": c["created_at"].isoformat(),
-                 "priority": c["priority"], "stage": c["card_status"]["stage"]} for c in cases]
+                 "priority": c["priority"], "stage": c["card_status"]["stage"],
+                 "revision": c.get("revision", 1), "assignment": c.get("assignment"),
+                 "completed_by": c.get("completed_by"), "completed_at": c.get("completed_at")} for c in cases]
 
 
 def insights():
@@ -386,7 +447,7 @@ def insights():
 BAND_SCORE = {"P1": 90, "P2": 70, "P3": 50, "P4": 20}  # a band pins the score in the middle of that band
 
 
-def rerank(case_id, band, score, reason, actor):
+def rerank(case_id, band, score, reason, actor, expected_revision=None):
     """Officer re-rank (gate G5), always with a reason. The pinned score stops waiting time from undoing it.
     KeyError -> 404, RuntimeError -> 409, ValueError -> 422."""
     reason = (reason or "").strip()
@@ -404,13 +465,14 @@ def rerank(case_id, band, score, reason, actor):
             raise KeyError(case_id)
         if case["status"] not in QUEUE_STATUSES:
             raise RuntimeError(f"case already {case['status']}")
+        _check_owner(case, actor, expected_revision)
         rescore(case)
         before = {"score": case["priority"]["score"], "band": case["priority"]["band"]}
         case["_override"] = {"score": BAND_SCORE[band] if band else score, "reason": reason, "actor": actor}
         rescore(case)
         after = {"score": case["priority"]["score"], "band": case["priority"]["band"]}
         _audit(case, actor, "RERANK", before=before, after=after, result=f"Re-ranked by {actor}: {reason}")
-        db.save_case(case)
+        _save(case)
     return case
 
 
@@ -425,6 +487,9 @@ def reset():
         md.reset()
         learning.reset()
         protocols.reset()
+        import intake_drafts
+        intake_drafts.DRAFTS.clear()
+        workspace_events.changed()
 
 
 def _restore():
@@ -433,6 +498,15 @@ def _restore():
         if "card_status" not in body:
             continue  # saved by the pre-Prorio backend: press Reset demo data to clear it
         body["created_at"] = md.parse_ts(body["created_at"])
+        body.setdefault("revision", 1)
+        if "assignment" not in body:
+            claim = next((a for a in reversed(body.get("audit_log", []))
+                          if a["action"] == "PICKED_UP" or a["action"].startswith("DECISION_")), None)
+            body["assignment"] = {"officer": claim["actor"], "claimed_at": claim["ts"]} if claim else None
+        completed = next((a for a in reversed(body.get("audit_log", [])) if a["action"] in
+                          ("MANUAL_COMPLETE", "DECISION_APPROVE", "DECISION_MODIFY")), None)
+        body.setdefault("completed_by", completed["actor"] if completed else None)
+        body.setdefault("completed_at", completed["ts"] if completed else None)
         CASES[body["case_id"]] = body
     for key, val in db.load_state().items():
         kind, *rest = key.split("|")

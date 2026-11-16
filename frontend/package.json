@@ -7,7 +7,7 @@
   },
   "description": "Browser regression tests. The dashboard itself has no build or npm runtime dependencies.",
   "scripts": {
-    "test": "node tests/workspace.cjs"
+    "test": "node tests/workspace.cjs && node tests/collaboration.cjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

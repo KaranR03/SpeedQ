@@ -110,6 +110,7 @@ async function review(page, name) {
         NRY_DB: path.join(temp, "test.db"),
         NRY_NOW: "2026-11-15T12:00:00Z",
         NRY_STAFF_PASSWORD: "",
+        NRY_STAFF_ACCOUNTS: "",
         NRY_WEBHOOK_SECRET: "",
         NRY_SUGGEST_THRESHOLD: "1",
       },

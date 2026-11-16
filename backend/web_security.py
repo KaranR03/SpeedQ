@@ -1,21 +1,30 @@
 """Same-origin browser protections and optional staff authentication.
 
 The unauthenticated default is for a loopback-only, synthetic-data demo. Set
-NRY_STAFF_PASSWORD and serve over HTTPS before making the app reachable remotely.
+NRY_STAFF_PASSWORD or NRY_STAFF_ACCOUNTS and serve over HTTPS for remote access.
 """
 import base64
 import binascii
 import hmac
 import os
+import json
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+DEMO_OFFICERS = ("Demo officer", "Alex Morgan", "Taylor Lee")
+
+
+def auth_enabled():
+    return bool(os.environ.get("NRY_STAFF_PASSWORD") or os.environ.get("NRY_STAFF_ACCOUNTS", "").strip())
+
 
 def _staff_identity(request):
     password = os.environ.get("NRY_STAFF_PASSWORD", "")
-    if not password:
-        return os.environ.get("NRY_OFFICER", "Demo officer")
+    if not auth_enabled():
+        demo = request.headers.get("x-demo-officer")
+        default = os.environ.get("NRY_OFFICER", "Demo officer")
+        return demo if demo in (*DEMO_OFFICERS, default) else None if demo else default
     username = os.environ.get("NRY_STAFF_USER", "officer")
     try:
         scheme, encoded = request.headers.get("authorization", "").split(" ", 1)
@@ -24,6 +33,19 @@ def _staff_identity(request):
         supplied_user, supplied_password = base64.b64decode(encoded, validate=True).decode("utf-8").split(":", 1)
     except (ValueError, UnicodeError, binascii.Error):
         return None
+    configured = os.environ.get("NRY_STAFF_ACCOUNTS", "").strip()
+    if configured:
+        try:
+            accounts = json.loads(configured)
+            if not isinstance(accounts, dict) or not 1 <= len(accounts) <= 50 or any(
+                not isinstance(k, str) or not k.strip() or not isinstance(v, str) or not v
+                for k, v in accounts.items()):
+                return None
+        except (ValueError, TypeError):
+            return None
+        expected = accounts.get(supplied_user)
+        valid = hmac.compare_digest(supplied_password.encode(), (expected or "unavailable-account").encode())
+        return supplied_user if expected is not None and valid else None
     user_ok = hmac.compare_digest(supplied_user.encode(), username.encode())
     password_ok = hmac.compare_digest(supplied_password.encode(), password.encode())
     return username if user_ok and password_ok else None
@@ -35,13 +57,15 @@ async def browser_security(request: Request, call_next):
     webhook = request.url.path == "/webhook/retell" and request.method == "POST"
     secret_intake = request.url.path == "/case" and request.method == "POST" and bool(
         os.environ.get("NRY_WEBHOOK_SECRET"))
+    draft_intake = request.url.path.startswith("/intake/drafts") and request.method == "POST" and bool(
+        os.environ.get("NRY_WEBHOOK_SECRET"))
     origin = request.headers.get("origin")
     trusted_origins = {item.strip() for item in os.environ.get("NRY_CORS_ORIGINS", "").split(",")
                        if item.strip() and item.strip() != "*"}
     trusted_origin = origin in trusted_origins
     same_origin = not origin or origin == f"{request.url.scheme}://{request.url.netloc}" or trusted_origin
     local_client = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
-    if not os.environ.get("NRY_STAFF_PASSWORD") and not local_client and not webhook and not secret_intake:
+    if not auth_enabled() and not local_client and not webhook and not secret_intake and not draft_intake:
         response = JSONResponse({"detail": "Local demo only. Configure staff authentication for remote access."},
                                 status_code=403)
     elif write and (not same_origin or (request.headers.get("sec-fetch-site") == "cross-site" and not trusted_origin)):
@@ -49,7 +73,7 @@ async def browser_security(request: Request, call_next):
     else:
         actor = _staff_identity(request)
         # Intake can use the existing webhook secret instead of staff credentials.
-        if actor is None and not webhook and not secret_intake:
+        if actor is None and not webhook and not secret_intake and not draft_intake:
             response = JSONResponse({"detail": "Staff sign-in required."}, status_code=401,
                                     headers={"WWW-Authenticate": 'Basic realm="Beacon Assist", charset="UTF-8"'})
         else:
@@ -77,4 +101,4 @@ async def browser_security(request: Request, call_next):
 
 def actor(request, claimed):
     """Use the authenticated identity in audit entries, never a body-supplied name."""
-    return request.state.staff_actor if os.environ.get("NRY_STAFF_PASSWORD") else claimed
+    return request.state.staff_actor if auth_enabled() or request.headers.get("x-demo-officer") else claimed

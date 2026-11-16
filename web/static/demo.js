@@ -7,13 +7,14 @@ const send = (win, msg) => win.postMessage(msg, location.origin);
 let busy = false;
 
 window.addEventListener("message", (e) => {
-  if (e.origin !== location.origin) return;
+  if (e.origin !== location.origin || e.source !== cust()) return;
   const m = e.data || {};
   if (m.type === "ready") {
     $("#scenes").replaceChildren(...Object.entries(m.scenes).map(([id, label]) =>
       h("button", { class: "btn small", "data-id": id, text: label, onclick: () => start(id) }), " "));
   }
   if (m.type === "caption") $("#caption").textContent = m.text;
+  if (m.type === "draft_started") send(off(), {type:"intake"});
   if (m.type === "submitted") setTimeout(() => send(off(), { type: "select", id: m.ref }), 2600);
   if (m.type === "done") { busy = false; document.querySelectorAll("#scenes .btn").forEach((b) => b.classList.remove("on")); }
 });

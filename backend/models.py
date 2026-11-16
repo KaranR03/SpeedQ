@@ -5,7 +5,7 @@ prorio.propose.ACTIONS.
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ActionItem(BaseModel):
@@ -14,6 +14,7 @@ class ActionItem(BaseModel):
 
 
 class Decision(BaseModel):
+    expected_revision: Optional[int] = Field(default=None, ge=1)
     decision: str                           # APPROVE | MODIFY | MANUAL
     actions: Optional[List[ActionItem]] = None   # MODIFY: the edited list to run
     officer: str = "officer"
@@ -22,6 +23,7 @@ class Decision(BaseModel):
 
 
 class OfficerNote(BaseModel):
+    expected_revision: Optional[int] = Field(default=None, ge=1)
     officer: str = "officer"
     note: str = ""
 
@@ -32,6 +34,7 @@ class OwnerDecision(BaseModel):
 
 
 class Rerank(BaseModel):
+    expected_revision: Optional[int] = Field(default=None, ge=1)
     band: Optional[str] = None     # exactly one of band / score
     score: Optional[int] = None
     reason: str = ""               # required, checked in store.rerank
@@ -74,3 +77,33 @@ class RetellPayload(BaseModel):
     case_reference: str = ""
     customer_sentiment: str = ""
     correction: str = ""            # the customer corrected or added to their card (glass-box card); logged, never ranked on
+
+
+class DraftStart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    customer_id: str = Field(min_length=1, max_length=80)
+
+
+class DraftRevision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=1)
+
+
+class DraftUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=1)
+    issue_type: Optional[str] = Field(default=None, max_length=80)
+    summary_en: Optional[str] = Field(default=None, max_length=2000)
+    summary_customer_lang: Optional[str] = Field(default=None, max_length=2000)
+    linked_transactions: Optional[List[str]] = Field(default=None, max_length=30)
+    risk_signals: Optional[List[str]] = Field(default=None, max_length=10)
+    safeblock_activated: Optional[bool] = None
+    card_locked: Optional[bool] = None
+    phase: Optional[str] = Field(default=None, pattern="^(LISTENING|CHECKING|CONFIRMING)$")
+
+
+class DraftConfirm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=1)
+    customer_confirmed: bool
+    case_reference: str = Field(default="", max_length=80)

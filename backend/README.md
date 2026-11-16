@@ -13,12 +13,23 @@ is optional. The API/schema reference at `/docs` is self-hosted and follows the 
 Checks: `python -m prorio.selftest` (Prorio's scoring, gates and proposals), `python test_api.py` (the API end to end),
 `python test_db.py` (persistence across a restart), `python test_workspace.py` (website integration and security).
 `python test_insights.py` covers the analytics, customer scope, payment totals and evidence/live-clock boundaries.
+`python test_collaboration.py` covers officer claim races, ownership transfer, stale decisions, identity, drafts and restart recovery.
 Browser tests: `cd ../frontend && npm ci && npm test` (Node 22.12+ and Chromium). All customer data is synthetic.
 
 Staff endpoints reject remote clients in local demo mode. Set `NRY_STAFF_PASSWORD` and optionally `NRY_STAFF_USER`
 to enable Basic authentication, and use HTTPS for remote connections. Set `NRY_ALLOWED_HOSTS` to the intended hostname.
-In this mode, configure `NRY_WEBHOOK_SECRET` for intake; the browser never receives these secrets. The shared account
+In this mode, configure `NRY_WEBHOOK_SECRET` for intake; the browser never receives these secrets. Basic authentication
 is a prototype control, not production SSO or role-based authorisation. See `../DESIGN.md` for boundaries.
+
+`NRY_STAFF_ACCOUNTS` optionally supplies a secure JSON mapping for distinct authenticated officers. The server uses
+that account identity for claims and decisions. Local-only demo identity switching does not grant remote access and
+is ignored in authenticated mode. Keep a single backend worker: the claim lock and SSE revision counter are process-local.
+
+`GET /workspace/events` invalidates staff snapshots after changes. `GET /workspace/intake` lists unranked drafts.
+The draft start/update/confirm/cancel routes use the same intake secret policy as the existing webhook. Confirmation
+creates a ranked case only after the customer confirms; a persisted internal association protects retries. Existing
+intake clients can keep using the final-card webhook. Modern officer clients should supply `expected_revision` on
+claims and mutations; ownership and already-decided checks also protect legacy clients that omit this optional field.
 
 `GET /workspace/insights` aggregates the saved workspace under the case-store lock. It does not reset cases or execute
 actions. `GET /case/{id}/context` returns masked accounts and owned transactions for that case's customer, with the
