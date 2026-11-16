@@ -1,14 +1,15 @@
 # Shared ownership and live intake
 
-The next increment builds on the officer workspace already merged into main. It addresses two concrete gaps:
-officers need reliable ownership when they work at the same time, and the handoff should be visible while a customer
-card is being assembled.
+**Implemented and merged:** [PR #10](https://github.com/bharath-blazecode/Team-Astars/pull/10), verified in remote
+`main` at `5c84495` on 17 Nov 2026 (Brisbane). This document is the implemented flow and walkthrough, not an
+outstanding feature proposal. Dashboard appearance refinements, new feature candidates and external integrations
+remain open in the [README roadmap](README.md#remaining-work-and-next-iterations).
 
-## The plan and resulting flow
+## Implemented flow
 
 1. **Shared ownership:** claim a case, see who owns it, release it with a handoff note, and record who completed it.
    The server reserves claims under the existing store lock. A second officer can inspect a claimed case but cannot
-   decide, complete, release or re-rank it. The current website sends a case revision with each mutation so an old
+   decide, complete, release or re-rank it. The current dashboard sends a case revision with each mutation so an old
    approval cannot overwrite a newer customer correction or handoff.
 2. **A case taking shape:** show unranked drafts separately from confirmed cases. The customer demo publishes the
    need, matched transaction, reported protection and conversation cues as those details are collected. Account
@@ -61,5 +62,6 @@ Tests cover simultaneous claims, independent completions, ownership transfers, s
 draft ownership checks, confirmation retries, cancellation and restart recovery. Browser checks use two independent
 sessions and the actual customer demo, plus desktop/mobile screenshots and automated accessibility checks.
 
-Delivery is a feature branch and a pull request targeting **main**. The user retains the final merge confirmation in
-GitHub. Environment publication and a branch push do not establish that the pull request has been merged.
+The feature was delivered as commit `fdf3bbb` and merged into **main** by PR #10 (`5c84495`). This was verified from
+the Git remote's commit history, independently of environment publication. The production and live Retell boundaries
+above still apply; merging the feature does not finish the remaining dashboard iterations or external setup.

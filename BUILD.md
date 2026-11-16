@@ -1,6 +1,8 @@
-> **Superseded.** This is the original build brief for the earlier "Never Repeat Yourself" plan. The final plan is
-> **Beacon Assist** (agents Clario and Prorio); see [README.md](README.md). Where the two disagree, the README wins.
-> This file is kept for reference only.
+> **Historical / superseded.** This is the original build brief for the earlier "Never Repeat Yourself" plan.
+> The current **Beacon Assist** implementation and remaining work are tracked in
+> [README.md](README.md#build-status-what-this-repo-runs-today). Its dashboard, SQLite persistence, staff controls and
+> scoring have superseded this brief. The old checkpoints, deadlines and "skip" instructions below are historical,
+> not the current backlog or setup instructions.
 
 # Never Repeat Yourself: Backend and Officer Console Build Spec
 
