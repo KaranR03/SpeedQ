@@ -363,6 +363,26 @@ def queue():
     return [public(c) for c in live]
 
 
+def workspace():
+    """Compact staff list including manual and completed work, without audit payloads."""
+    fields = ("case_id", "customer_id", "customer_name", "issue_type", "summary_en", "status", "language_label", "language", "contacts")
+    with _lock:
+        for c in _open_cases():
+            rescore(c)
+        cases = sorted(CASES.values(), key=lambda c: (-c["priority"]["score"], c["created_at"]))
+        return [{**{k: c[k] for k in fields}, "created_at": c["created_at"].isoformat(),
+                 "priority": c["priority"], "stage": c["card_status"]["stage"]} for c in cases]
+
+
+def insights():
+    """Aggregate under the store lock so stages, decisions and totals agree."""
+    import workspace_insights
+    with _lock:
+        for case in _open_cases():
+            rescore(case)
+        return workspace_insights.summarize(list(CASES.values()))
+
+
 BAND_SCORE = {"P1": 90, "P2": 70, "P3": 50, "P4": 20}  # a band pins the score in the middle of that band
 
 

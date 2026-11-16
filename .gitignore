@@ -7,3 +7,5 @@ __pycache__/
 # secrets: API keys live in .env on the demo laptop, never in git
 .env
 .env.*
+node_modules/
+test-results/

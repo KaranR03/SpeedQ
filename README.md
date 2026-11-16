@@ -498,7 +498,7 @@ minute**.
 |---|---|
 | **Prorio** (Priority and Protocol), `backend/prorio/` | **Built.** Rule-based, no language model and no outside API. The 0 to 100 score, bands, gates G1 and G3 to G7, verified account signals (including the cross-case payee check), protocol lookup, proposals, who acts (P4: AI after one-click approval), a step-by-step trace, and the "officers teach, leads approve" loop |
 | Backend: intake from Clario, live priority list, decisions, re-rank, audit log, customer status tracker | **Built** |
-| **Officer dashboard** (`/officer`): live priority list, score receipt, "view as" lenses, proposal with protocol and version, Approve / Modify / Manual, pick up, re-rank, audit log, Protocols tab with suggestions, approval and rollback | **Built** (plain HTML, CSS and JavaScript served by the backend; no build step, works offline) |
+| Officer website (`frontend/`): priority queue, concise preview, focused review, evidence/activity tabs, decisions, manual outcomes, re-ranking, protocol library and learning loop | **Built**, served directly by FastAPI; the previous Streamlit dashboard remains as an optional local reference |
 | **Customer app** (`/customer`): Clario's conversation for five demo customers, Face ID and protection timer, card read-back, the glass-box card with live tracker and corrections, the outcome message | **Built.** Customer lines are scripted; Clario's look-ups, the card, Prorio's ranking and the tracker are real |
 | **Side-by-side demo** (`/demo`): customer app and officer dashboard together, with scene buttons and captions | **Built**, for recording the video |
 | Streamlit console (`console/`) | Kept as a fallback |
@@ -540,24 +540,43 @@ change it, or `NRY_NOW=real` to use the real clock.
 
 **You need:** Python 3 (built and tested on 3.9) and a terminal. Nothing else: no API key, no internet, no build step.
 
-### 1. Start the backend (it also serves the web pages)
+### 1. Start the officer workspace and backend
 
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Then open:
+The new **Beacon Assist officer workspace** is served at `http://127.0.0.1:8000` by the backend itself. No frontend
+build, Node server, external font, or third-party script is required. Click **Load sample cases** to add five synthetic
+customers without clearing existing work. The loader is idempotent and is disabled when staff authentication is enabled.
 
-| Page | What it is |
-|---|---|
-| `http://localhost:8000/demo` | **Start here.** Customer app on the left, officer dashboard on the right, scene buttons on top |
-| `http://localhost:8000/officer` | The officer dashboard on its own |
-| `http://localhost:8000/customer` | The customer app on its own (pick a demo customer) |
-| `http://localhost:8000/customer?track=WGM-0412` | Only the live card for one case, for example one created by a Retell call |
+The workspace includes a searchable priority queue, a compact case preview, a focused review screen, evidence and
+activity tabs, manual case tracking, completed outcomes, the protocol library and the learning loop. Opening a preview
+does not pick up a case; **Review case** explicitly records pickup. Decisions require a confirmation step. Unfilled
+customer-message fields route officers to manual handling so they can record a complete outcome.
+
+**Care insights** adds interactive urgency, issue mix, case stages, open-case age, decision distribution, evidence
+coverage and response-watch visuals. Selecting a band, issue or stage opens the matching real cases. Amounts are
+deduplicated, ownership-checked linked outgoings in AUD; they are not confirmed losses. Response-watch thresholds are
+project design targets, not bank SLAs. The dashboard explicitly distinguishes its live case clock from the fixed
+account-evidence clock.
+
+Within a case, **Evidence** explains the score with component bars and adjustments. **Customer context** shows masked
+accounts, linked owned transactions, optional recent history, security/access events and card-delivery milestones.
+Reported protection is kept separate from verified account state. **Handoff brief** prepares a concise staff summary
+for an explicit copy action; it does not send anything externally.
+
+See [the dataset and feature feasibility review](FEATURE_REVIEW.md) for sources, limitations and ideas worth deferring.
+
+### Customer app and side-by-side demo
+
+The customer app remains at `/customer`, case tracking at `/customer?track=<reference>`, and the recording view at
+`/demo`. Its officer pane uses the redesigned workspace at `/officer`. These two child pages allow same-origin
+framing for the demo; other sites cannot frame them. The root `/` remains the standalone officer workspace.
 
 ### Recording the video
 
@@ -565,9 +584,9 @@ Then open:
 2. Play the scenes in this order: **Maria** (protected in under a minute, jumps to P1), **Minh** (Vietnamese; adds to
    his card and the officer sees it live), **Sam** (P4: one click and the AI sends the answer), **Priya**, **Jordan**
    ("talk to a person").
-3. Between scenes, work the officer side: open Maria, show **View as** Prorio and Customer, then **Approve**. Open Sam
-   and **Approve (AI sends it)**: his card on the left reaches Done. Open Minh and **Modify** (add a callback) to
-   create a protocol suggestion, then show the **Protocols** tab.
+3. Between scenes, work the officer side: choose **Review case** for Maria, show **Evidence** and **Customer context**,
+   then **Review & approve** and confirm. Review Sam's AI-after-approval plan: his card on the left reaches Done.
+   Open Minh and **Modify plan** (add a callback) to create a suggestion, then show **Learning loop** and **Protocol library**.
 4. To show a lead approving a new protocol version in one go, start the backend with `NRY_SUGGEST_THRESHOLD=1`.
 
 The yellow caption strip says what is happening in each scene, so the video reads without a voice-over. The phone
@@ -581,14 +600,17 @@ For the on-site pitch, everything runs on one laptop, exactly as above. Only a l
   base, and its key stays in Retell, so no AI key is needed in this repo. It sends each card to `/webhook/retell`.
   Retell can't reach `localhost`, so open a tunnel (for example `ngrok http 8000`) and use your phone's hotspot, not
   the venue Wi-Fi. Open `/customer?track=<reference>` to show the customer's live card while the officer works.
-- **Hand a judge the phone.** On the same hotspot, a phone can open `http://<laptop IP>:8000/customer`. Start the
-  backend with `--host 0.0.0.0` for that (it then accepts connections from the hotspot, so don't do it on a shared
-  network).
+- **Hand a judge the phone.** Remote access needs HTTPS, `NRY_STAFF_PASSWORD`, the intended hostname in
+  `NRY_ALLOWED_HOSTS`, and `NRY_WEBHOOK_SECRET` for intake. The default demo permits only loopback clients.
+  This remains a shared staff demonstration, not customer authentication for a deployed bank service.
 - **Fallback.** If the internet or Retell fails, the scripted scenes on `/demo` still run the real backend, and the
   recorded video is the last resort.
 - **Before going on stage:** reset the demo, run one scene end to end, check the officer name, and close other tabs.
 
-### 2. Optional: the Streamlit console (a second terminal)
+### 2. Optional: legacy Streamlit dashboard
+
+The previous dashboard remains available for reference. It is not needed for the new website. It does not implement
+the new staff sign-in; use the same-origin website when authentication is enabled.
 
 ```bash
 cd console
@@ -598,7 +620,7 @@ pip install -r requirements.txt
 streamlit run officer_app.py
 ```
 
-It opens in your browser (normally at `http://localhost:8501`). It is the earlier dashboard, kept as a fallback.
+It normally runs at `http://localhost:8501`. The recommended workspace is the new website on port 8000.
 
 ### 3. Send in cards by hand
 
@@ -618,9 +640,10 @@ curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_i
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-001","customer_name":"Maria R.","issue_type":"SCAM_IN_PROGRESS","linked_transactions":"TX-9001","risk_signals":"CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES","summary_en":"Caller says someone claiming to be from Westpac told her to move her savings.","case_reference":"WGM-0412"}'
 ```
 
-Watch the dashboard: Priya, Minh and Sam appear, then Maria arrives and takes the top spot within two seconds. Open
-her case, read the reasons and "What Prorio did", and press **Approve**. Open Sam's case and press **Approve: AI
-carries it out**. More examples are in [`backend/README.md`](backend/README.md).
+Watch the dashboard: Priya, Minh and Sam appear, then Maria arrives and takes the top spot on the next refresh (within
+ten seconds in the new workspace, two in the legacy dashboard). Open
+her case, read the reasons and evidence, and choose **Review & approve**, then confirm. Review Sam's routine case to
+see the **AI acts after your approval** plan. More examples are in [`backend/README.md`](backend/README.md).
 
 ### Starting over
 
@@ -698,13 +721,20 @@ card is updated and its reference returned (gate G6).
 | GET | `/suggestions` | Protocol suggestions from officers' Modify and Manual decisions |
 | POST | `/suggestions/{id}/approve` | Protocol owner approves (only once it has been suggested enough times); creates a new version |
 | POST | `/suggestions/{id}/reject` | Protocol owner rejects |
-| GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, signal labels, demo clock |
+| GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, demo clock |
+| GET | `/` | The new same-origin officer workspace |
+| GET | `/workspace/session` | Current staff identity and local demo status; never credentials |
+| GET | `/workspace/cases` | Compact active, manual and completed case list |
+| GET | `/workspace/insights` | Read-only analytics across saved cases; ownership-checked payment totals and live response watch |
+| GET | `/case/{id}/context` | Masked records belonging to this case's customer, reported/verified protection and evidence-clock history |
+| POST | `/demo/seed` | Add synthetic examples once, preserving existing work; local demo mode only |
 | GET | `/clario/{customer_id}/lookup` | Clario's read-only look-up for the signed-in customer: first name, masked accounts, card delivery, payees, recent transactions. No balances |
-| GET | `/demo`, `/officer`, `/customer` | The web pages (files in `web/`) |
+| GET | `/demo`, `/officer`, `/customer` | Recording demo, redesigned officer workspace and retained customer app |
 | POST | `/admin/reset` | Clears all cases, demo account changes, suggestions and approved versions (no password; demo only) |
 
 Errors: `404` not found, `409` already decided or not ready, `422` invalid request (unknown issue, missing reason, an
-action not on the allowed list). Interactive docs: `http://localhost:8000/docs` while the backend runs.
+action not on the allowed list). Searchable, self-hosted API/schema reference: `http://localhost:8000/docs` while
+the backend runs. The OpenAPI document is at `/openapi.json`.
 
 Executable actions (all mocked, they only record that they happened): `ACTIVATE_SAFEBLOCK`, `BLOCK_CARD`,
 `RAISE_DISPUTE`, `DRAFT_PAYMENT_RECALL`, `DRAFT_PAYMENT_TRACE`, `DRAFT_SCAM_REPORT`, `DRAFT_HARDSHIP_NOTES`,
@@ -736,6 +766,18 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 | `NRY_NOW` | `2026-11-15T12:00:00Z` | Backend | The demo clock for account evidence. `real` uses the real clock |
 | `NRY_SUGGEST_THRESHOLD` | `3` | Backend | How many times a protocol suggestion must be made before the owner can approve it. Set `1` for a quick demo |
 | `NRY_CORS_ORIGINS` | none | Backend | Comma-separated web origins allowed to call the API from a browser. Not needed: the pages are served by the backend itself |
+| `NRY_STAFF_PASSWORD` | unset | Backend / new website | Enables HTTP Basic staff authentication for the website, staff APIs, docs and administration. Use a strong secret and HTTPS for remote access; never commit it |
+| `NRY_STAFF_USER` | `officer` | Backend / new website | Staff username when password protection is enabled; this authenticated identity is used in audit records |
+| `NRY_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1],testserver` | Backend | Comma-separated hostnames accepted by the server. Add the actual hostname when placing the application behind an HTTPS proxy; avoid wildcards |
+
+Without a staff password, staff access is restricted to loopback clients. Secret-authenticated intake can still be
+used by a server-to-server voice integration. Remote intake and intake in staff mode require `NRY_WEBHOOK_SECRET` to be
+configured; an unset secret fails closed. The browser never receives either secret. Cross-origin browser mutations
+are rejected unless their origin is explicitly trusted through `NRY_CORS_ORIGINS`; unrestricted CORS has been removed, and the website uses a strict self-only Content Security Policy,
+frame protection, no-store responses and text-only rendering of API data.
+
+This is still a single-account prototype, not production banking authentication: it has no SSO, per-officer accounts,
+role separation or session revocation. Use synthetic data only. See [the interface design and security notes](DESIGN.md).
 
 ---
 
@@ -748,8 +790,26 @@ Run from the `backend` folder with its environment switched on.
 | `python -m prorio.selftest` | Every worked example in "How priority is worked out", the gates, the cross-case check, the firewall (summaries are ignored), and that all 31 protocols produce a proposal |
 | `python test_api.py` | The whole backend through its endpoints: priority order, `handoff` reply, one problem one card, decisions, the P4 AI action, the customer status tracker, the learning loop, re-ranking and error cases |
 | `python test_db.py` | Restarts the backend for real and checks nothing was lost, including approved protocol versions |
+| `python test_workspace.py` | Website assets, local-only demo access, staff authentication, protected intake, audit identity, origin/host checks and additive sample loading |
+| `python test_insights.py` | Empty and populated analytics, payment deduplication, customer ownership, clocks, stages, response-watch boundaries and context access control |
 
-The tests use a throwaway in-memory database, so they never touch `nry.db`.
+The API/workspace tests use an in-memory database; persistence checks use a temporary file. They never touch `nry.db`.
+
+Browser regression checks (Node 22.12+; development dependencies only):
+
+```bash
+cd frontend
+npm ci
+# If Chromium is not installed: npx playwright install chromium
+npm test
+```
+
+The browser suite starts its own backend and temporary database, uses installed Chromium when available, and checks
+the real UI: filtering, pickup, cancellation, approval, modified actions, manual outcomes, re-ranking, protocol changes,
+hostile content, connection failures, chart drill-downs, score caps, customer context, handoffs, responsive layouts and automated WCAG accessibility checks. Screenshots and
+accessibility reports (including checks requiring manual review) are written to ignored `frontend/test-results/`.
+Set `BEACON_CHROMIUM` to choose another Chromium executable, `BEACON_PYTHON` for the backend Python executable, or
+`BEACON_TEST_PORT` if its default port 8025 is occupied.
 
 ---
 
@@ -778,13 +838,10 @@ Team-Astars/
 │   ├── test_api.py  test_db.py
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
-├── web/                  the web pages, served by the backend
-│   ├── demo.html         side by side: customer app and officer dashboard
-│   ├── officer.html      the officer dashboard
-│   ├── customer.html     the customer app (Clario and the glass-box card)
-│   └── static/           app.css, dom.js (safe DOM helper), officer.js, customer.js, demo.js
-└── console/
-    ├── officer_app.py    the earlier Streamlit dashboard (fallback)
+├── frontend/             the new website: self-hosted HTML, CSS and JavaScript; no build step
+│   └── tests/            isolated browser workflow checks
+└── console/             optional legacy Streamlit interface
+    ├── officer_app.py    the officer dashboard
     └── requirements.txt
 ```
 
@@ -806,15 +863,11 @@ the Westpac knowledge base; the AI never moves money; "talk to a person" is alwa
 
 ## Known limits and future work
 
-- **No log-in on the backend or dashboard.** Anyone who can reach the backend can read the queue and make decisions,
-  and the reset endpoint has no password. Fine on one laptop, not on a shared network: keep the default `localhost`
-  unless a phone needs to connect over your own hotspot.
-- **What is protected.** The pages send a strict Content Security Policy (scripts, styles and data only from this
-  server, no inline code, no framing by other sites), and every piece of customer text is rendered as plain text, never
-  as HTML, so a card can't inject script. Browser cross-origin access is off unless `NRY_CORS_ORIGINS` is set.
-- **The Vietnamese lines** in Minh's scene were written for the demo; have a native speaker check them before
-  recording.
-- **The queue refreshes by polling every 2 seconds**, not by push.
+- **Prototype access control.** The new website supports optional staff authentication and otherwise restricts staff
+  access to loopback clients. This is not production SSO or role-based banking access. The legacy Streamlit app is for
+  local reference only. Reset is available through the protected API, not as a prominent website button.
+- **The new queue refreshes every 10 seconds**, pauses polling in background tabs and makes failed updates visible.
+  The legacy Streamlit queue polls every 2 seconds. Neither uses push.
 - **One machine, one process.** SQLite with a single connection suits a demo, not production.
 - **Demo dates.** Sample transactions are dated 9 to 15 November 2026. Scoring uses a fixed demo clock (`NRY_NOW`), so
   it is unaffected; the plain "recent transactions" look-up uses the real clock and comes back empty once the dates

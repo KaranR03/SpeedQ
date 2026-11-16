@@ -9,39 +9,74 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import mock_data as md
 import store
+import workspace_insights
+from web_security import actor, browser_security
 from models import Decision, OfficerNote, OwnerDecision, Rerank, RetellPayload
 from prorio import evidence, learning, protocols
 from prorio.propose import ACTIONS, ACTION_TEXT
 from prorio.score import BAND_LABEL, BAND_MESSAGE, FIRST_SEEN, HANDOFF
 
-app = FastAPI(title="Beacon Assist backend (Prorio)")
-# The web pages are served from this same origin, and Retell and the Streamlit console call server to server, so no
-# browser needs cross-origin access. Add origins to NRY_CORS_ORIGINS (comma-separated) only if a page lives elsewhere.
-_origins = [o.strip() for o in os.environ.get("NRY_CORS_ORIGINS", "").split(",") if o.strip()]
+app = FastAPI(title="Beacon Assist backend (Prorio)", docs_url=None, redoc_url=None)
+app.middleware("http")(browser_security)
+_origins = [origin.strip() for origin in os.environ.get("NRY_CORS_ORIGINS", "").split(",")
+            if origin.strip() and origin.strip() != "*"]
 if _origins:
     app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["GET", "POST"],
-                       allow_headers=["content-type", "x-webhook-secret"])
-
+                       allow_headers=["content-type", "x-webhook-secret", "authorization"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=[
+    h.strip() for h in os.environ.get("NRY_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1],testserver").split(",")
+    if h.strip()
+])
+FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 WEB = Path(__file__).resolve().parent.parent / "web"
-# Strict browser rules for every response: scripts, styles and data only from this server, no inline code, no
-# framing by other sites. Pages render customer text with textContent only, so card text can never run as code.
-CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
-       "font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
 
 
-@app.middleware("http")
-async def security_headers(request: Request, call_next):
-    resp = await call_next(request)
-    resp.headers["Content-Security-Policy"] = CSP
-    resp.headers["X-Content-Type-Options"] = "nosniff"
-    resp.headers["Referrer-Policy"] = "no-referrer"
-    resp.headers["X-Frame-Options"] = "SAMEORIGIN"
-    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-    return resp
+@app.get("/assets/{filename}", include_in_schema=False)
+def frontend_asset(filename: str):
+    # Do not expose tests, package manifests, reports or node_modules as web assets.
+    if filename not in {"app.js", "visuals.js", "insights.css", "styles.css", "beacon.svg", "docs.js"}:
+        raise HTTPException(404, "asset not found")
+    return FileResponse(FRONTEND / filename)
+
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    return FileResponse(FRONTEND / "index.html")
+
+
+@app.get("/docs", include_in_schema=False)
+def api_reference():
+    return FileResponse(FRONTEND / "docs.html")
+
+
+@app.get("/redoc", include_in_schema=False)
+def api_reference_redirect():
+    return RedirectResponse("/docs")
+
+
+@app.get("/workspace/session")
+def workspace_session(request: Request):
+    return {"officer": request.state.staff_actor, "authenticated": bool(os.environ.get("NRY_STAFF_PASSWORD")),
+            "demo": not bool(os.environ.get("NRY_STAFF_PASSWORD"))}
+
+
+@app.get("/workspace/cases")
+def workspace_cases():
+    return store.workspace()
+
+
+@app.get("/workspace/insights")
+def get_workspace_insights():
+    return store.insights()
+
+
+@app.get("/case/{case_id}/context")
+def get_customer_context(case_id: str):
+    return workspace_insights.customer_context(_case(case_id))
 
 
 def _errors(fn, *args):
@@ -56,9 +91,12 @@ def _errors(fn, *args):
         raise HTTPException(422, str(e))
 
 
-def _check_secret(x_webhook_secret: str = Header(default="")):
-    """Intake only. If NRY_WEBHOOK_SECRET is set, callers must send it as x-webhook-secret."""
+def _check_secret(request: Request, x_webhook_secret: str = Header(default="")):
+    """Remote intake always requires a secret; local demo intake may remain open."""
     secret = os.environ.get("NRY_WEBHOOK_SECRET", "")
+    local = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
+    if (os.environ.get("NRY_STAFF_PASSWORD") or not local) and not secret:
+        raise HTTPException(503, "Configure NRY_WEBHOOK_SECRET before enabling remote or authenticated intake.")
     if secret and not hmac.compare_digest(x_webhook_secret.encode(), secret.encode()):
         raise HTTPException(401, "missing or wrong x-webhook-secret")
 
@@ -125,24 +163,24 @@ def get_status(case_id: str):
 
 
 @app.post("/case/{case_id}/pickup")
-def post_pickup(case_id: str, body: OfficerNote):
-    return store.public(_errors(store.pick_up, case_id, body.officer))
+def post_pickup(case_id: str, body: OfficerNote, request: Request):
+    return store.public(_errors(store.pick_up, case_id, actor(request, body.officer)))
 
 
 @app.post("/case/{case_id}/decision")
-def post_decision(case_id: str, body: Decision):
-    return store.public(_errors(store.decide, case_id, body.decision, body.actions, body.officer, body.note,
+def post_decision(case_id: str, body: Decision, request: Request):
+    return store.public(_errors(store.decide, case_id, body.decision, body.actions, actor(request, body.officer), body.note,
                                 body.suggest_update))
 
 
 @app.post("/case/{case_id}/complete")
-def post_complete(case_id: str, body: OfficerNote):
-    return store.public(_errors(store.complete, case_id, body.officer, body.note))
+def post_complete(case_id: str, body: OfficerNote, request: Request):
+    return store.public(_errors(store.complete, case_id, actor(request, body.officer), body.note))
 
 
 @app.post("/case/{case_id}/rerank")
-def post_rerank(case_id: str, body: Rerank):
-    return store.public(_errors(store.rerank, case_id, body.band, body.score, body.reason, body.officer))
+def post_rerank(case_id: str, body: Rerank, request: Request):
+    return store.public(_errors(store.rerank, case_id, body.band, body.score, body.reason, actor(request, body.officer)))
 
 
 @app.get("/audit/{case_id}")
@@ -169,11 +207,11 @@ def get_protocol(issue_type: str):
 
 
 @app.post("/protocols/{issue_type}/rollback")
-def post_rollback(issue_type: str, body: OwnerDecision):
+def post_rollback(issue_type: str, body: OwnerDecision, request: Request):
     if issue_type not in protocols.BASE:
         raise HTTPException(404, "unknown issue type")
     version = _errors(protocols.rollback, issue_type)
-    return {"issue_type": issue_type, "version": version, "rolled_back_by": body.owner}
+    return {"issue_type": issue_type, "version": version, "rolled_back_by": actor(request, body.owner)}
 
 
 @app.get("/suggestions")
@@ -182,13 +220,49 @@ def get_suggestions():
 
 
 @app.post("/suggestions/{sid}/approve")
-def post_approve(sid: str, body: OwnerDecision):
-    return _errors(learning.approve, sid, body.owner, store._now_str())
+def post_approve(sid: str, body: OwnerDecision, request: Request):
+    return _errors(learning.approve, sid, actor(request, body.owner), store._now_str())
 
 
 @app.post("/suggestions/{sid}/reject")
-def post_reject(sid: str, body: OwnerDecision):
-    return _errors(learning.reject, sid, body.owner, body.reason, store._now_str())
+def post_reject(sid: str, body: OwnerDecision, request: Request):
+    return _errors(learning.reject, sid, actor(request, body.owner), body.reason, store._now_str())
+
+
+@app.post("/demo/seed")
+def seed_demo():
+    """Add a small synthetic queue, preserving all existing cases and decisions."""
+    if os.environ.get("NRY_STAFF_PASSWORD"):
+        raise HTTPException(403, "Sample loading is available only in local demo mode.")
+    samples = [
+        {"customer_id": "CUST-001", "customer_name": "Maria R.", "issue_type": "SCAM_IN_PROGRESS",
+         "linked_transactions": "TX-9001", "risk_signals": "CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES",
+         "summary_en": "A caller claiming to be from the bank asked Maria to move $4,800 to a new account.",
+         "case_reference": "DEMO-0412"},
+        {"customer_id": "CUST-006", "customer_name": "Jordan L.", "issue_type": "ACCOUNT_ACCESS",
+         "risk_signals": "ESSENTIALS_AT_RISK", "summary_en": "Locked out after an unfamiliar password change. Needs access to buy groceries.",
+         "case_reference": "DEMO-0413"},
+        {"customer_id": "CUST-003", "customer_name": "Priya S.", "issue_type": "FRAUD_UNAUTHORISED",
+         "linked_transactions": "TX-7001", "card_locked": True,
+         "summary_en": "An unrecognised $89 subscription charge. Priya has already locked her card.",
+         "case_reference": "DEMO-0414"},
+        {"customer_id": "CUST-004", "customer_name": "Minh N.", "issue_type": "MONEY_MISSING",
+         "linked_transactions": "TX-8001", "language": "vi", "language_label": "Vietnamese",
+         "summary_en": "A $650 rent payment has not reached the landlord. Vietnamese language support requested.",
+         "summary_customer_lang": "Mất khoản tiền thuê nhà $650", "case_reference": "DEMO-0415"},
+        {"customer_id": "CUST-002", "customer_name": "Sam T.", "issue_type": "CARD_DELIVERY",
+         "summary_en": "Replacement card has not arrived. Would like an update on the delivery date.",
+         "case_reference": "DEMO-0416"},
+    ]
+    added = 0
+    for sample in samples:
+        if sample["case_reference"] not in store.CASES and not any(
+            c["customer_id"] == sample["customer_id"] and c["issue_type"] == sample["issue_type"]
+            and c["status"] in store.QUEUE_STATUSES for c in store.CASES.values()
+        ):
+            store.create_case(RetellPayload(**sample))
+            added += 1
+    return {"added": added}
 
 
 # ---- Reference and admin --------------------------------------------------------------------------------------
@@ -226,21 +300,23 @@ def clario_lookup(customer_id: str):
 
 # ---- Web pages: officer dashboard, customer app, side-by-side demo -------------------------------------------------
 
-if WEB.is_dir():
-    app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
+@app.get("/static/{filename}", include_in_schema=False)
+def demo_asset(filename: str):
+    if filename not in {"app.css", "officer.js", "customer.js", "demo.js", "dom.js"}:
+        raise HTTPException(404, "asset not found")
+    return FileResponse(WEB / "static" / filename)
 
-    @app.get("/", include_in_schema=False)
-    def home():
-        return RedirectResponse("/demo")
 
-    @app.get("/officer", include_in_schema=False)
-    def page_officer():
-        return FileResponse(WEB / "officer.html")
+@app.get("/officer", include_in_schema=False)
+def page_officer():
+    return FileResponse(FRONTEND / "index.html")
 
-    @app.get("/customer", include_in_schema=False)
-    def page_customer():
-        return FileResponse(WEB / "customer.html")
 
-    @app.get("/demo", include_in_schema=False)
-    def page_demo():
-        return FileResponse(WEB / "demo.html")
+@app.get("/customer", include_in_schema=False)
+def page_customer():
+    return FileResponse(WEB / "customer.html")
+
+
+@app.get("/demo", include_in_schema=False)
+def page_demo():
+    return FileResponse(WEB / "demo.html")
