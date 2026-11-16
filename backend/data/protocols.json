@@ -1,0 +1,267 @@
+{
+  "_about": {
+    "what": "Beacon Assist Protocol Database (synthetic demo version). One protocol per issue type. Prorio reads it to draft proposed solutions; officers suggest changes; a protocol owner approves; every change bumps the version.",
+    "grounding": "Steps and timeframes are paraphrased from public Westpac help pages and Australian rules (ePayments Code, AFCA, ASIC RG 271, Moneysmart, ABA), all read on 16 Nov 2026. Each protocol lists its sources. 'team_design' marks a step that is our own design, not a published rule.",
+    "not_real": "This is not Westpac's internal procedure. It is a demo built from public information.",
+    "actions_in_code_today": ["ACTIVATE_SAFEBLOCK", "BLOCK_CARD", "RAISE_DISPUTE", "DRAFT_PAYMENT_RECALL", "DRAFT_SCAM_REPORT", "BOOK_CALLBACK", "SEND_CUSTOMER_UPDATE"],
+    "actions_proposed_new": ["DRAFT_PAYMENT_TRACE", "ORDER_REPLACEMENT_CARD", "DRAFT_HARDSHIP_NOTES", "DRAFT_COMPLAINT_RESPONSE"]
+  },
+  "protocols": [
+    {
+      "issue_type": "SCAM_IN_PROGRESS",
+      "title": "Customer is being scammed or pressured to move money",
+      "version": "1.0",
+      "harm_points": 60,
+      "protect_first": {"action": "ACTIVATE_SAFEBLOCK", "who": "customer, with Face ID", "say": "Please don't move any money, and hang up on anyone telling you to. I can lock your accounts and cards right now with SafeBlock. Scheduled payments and money coming in keep working."},
+      "steps": [
+        {"who": "AI (Clario)", "step": "Tell the customer to stop all contact with the caller and not send more money", "source": "moneysmart_scammed"},
+        {"who": "customer", "step": "Turn on SafeBlock (customer's choice, Face ID step-up)", "source": "westpac_safeblock_guide"},
+        {"who": "AI (Prorio)", "step": "Draft a payment recall for each linked outgoing transfer and a scam report", "source": "aba_scammed"},
+        {"who": "officer (fraud specialist)", "step": "Warm handoff; confirm what happened; submit the recall and scam report", "source": "westpac_how_to_report"},
+        {"who": "officer", "step": "Warn the customer about follow-up 'recovery' scams that ask for fees", "source": "aba_scammed"},
+        {"who": "AI (Clario)", "step": "Send the reference number and next steps in the customer's language", "source": "team_design"}
+      ],
+      "ai_may": ["ACTIVATE_SAFEBLOCK (only when the customer chooses it)", "DRAFT_PAYMENT_RECALL", "DRAFT_SCAM_REPORT", "BOOK_CALLBACK"],
+      "officer_must": ["submit the payment recall", "submit the scam report", "lift SafeBlock later, after verification"],
+      "required_checks": ["Face ID step-up before SafeBlock", "at least one verified account signal for P1 (gate G1)"],
+      "customer_message": "Your accounts are locked with SafeBlock. A fraud specialist is reviewing case {case_id} now and will try to recover the money. Recovery isn't guaranteed. Never pay anyone who offers to get your money back for a fee.",
+      "timeframes": [{"what": "Recall", "rule": "Recall is attempted but not guaranteed", "source": "westpac_recall"}],
+      "sources": ["moneysmart_scammed", "aba_scammed", "westpac_safeblock_guide", "westpac_how_to_report", "westpac_recall"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "FRAUD_UNAUTHORISED",
+      "title": "Money taken without the customer's consent",
+      "version": "1.0",
+      "harm_points": 45,
+      "protect_first": {"action": "BLOCK_CARD or ACTIVATE_SAFEBLOCK", "who": "customer, with Face ID", "say": "I can lock your card now so nothing else goes through."},
+      "steps": [
+        {"who": "AI (Clario)", "step": "Show the merchant details first; unfamiliar names are often a known merchant under a different name", "source": "westpac_disputes"},
+        {"who": "customer", "step": "Lock the card or turn on SafeBlock", "source": "westpac_pending"},
+        {"who": "officer", "step": "Stop the card and order a new one; give a case number", "source": "westpac_fraud_card"},
+        {"who": "officer", "step": "Send the transaction investigation request for the customer to confirm and return within 14 days", "source": "westpac_fraud_card"},
+        {"who": "officer", "step": "Investigate and refund if the decision is in the customer's favour", "source": "westpac_fraud_card"}
+      ],
+      "ai_may": ["BLOCK_CARD (only when the customer chooses it)", "draft the investigation summary", "SEND_CUSTOMER_UPDATE (status only)"],
+      "officer_must": ["decide liability", "any refund", "issue the replacement card"],
+      "required_checks": ["Face ID step-up before locking", "pending transactions cannot be disputed yet: lock and report"],
+      "customer_message": "Your card is locked and case {case_id} is open. We'll investigate and tell you the outcome and the reasons.",
+      "timeframes": [
+        {"what": "Westpac card fraud cases", "rule": "Can take up to 21 working days", "source": "westpac_fraud_card"},
+        {"what": "ePayments Code", "rule": "Within 21 days: outcome or written notice that more time is needed; investigation done within 45 days unless exceptional", "source": "epayments_code"},
+        {"what": "Reporting window", "rule": "Reports accepted up to 6 years after the customer became aware", "source": "epayments_code"}
+      ],
+      "sources": ["westpac_fraud_card", "westpac_pending", "westpac_disputes", "epayments_code", "afca_unauthorised"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "ACCOUNT_ACCESS",
+      "title": "Locked out of own money, or suspected account takeover",
+      "version": "1.0",
+      "harm_points": 40,
+      "protect_first": {"action": "ACTIVATE_SAFEBLOCK if takeover is suspected", "who": "customer, with Face ID", "say": "If you think someone else got into your account, I can lock it now."},
+      "steps": [
+        {"who": "AI (Prorio)", "step": "Check for recent password, device or contact-detail changes (signal flags from the scoring code)", "source": "team_design"},
+        {"who": "officer", "step": "Verify identity before restoring any access", "source": "team_design"},
+        {"who": "officer", "step": "Restore access or reset sign-in; confirm the Westpac Protect SMS number is the customer's own", "source": "westpac_update_details"},
+        {"who": "AI (Clario)", "step": "Keep the customer updated; offer a callback", "source": "team_design"}
+      ],
+      "ai_may": ["ACTIVATE_SAFEBLOCK (only when the customer chooses it)", "BOOK_CALLBACK", "SEND_CUSTOMER_UPDATE (status only)"],
+      "officer_must": ["unlock or restore access", "reset credentials", "remove SafeBlock"],
+      "required_checks": ["identity verification by an officer", "gate G3: never below P3"],
+      "customer_message": "We're checking your account access now (case {case_id}). For your safety, only a person can restore access.",
+      "timeframes": [],
+      "sources": ["westpac_update_details"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "CARD_LOST_STOLEN",
+      "title": "Card lost, stolen or misplaced",
+      "version": "1.0",
+      "harm_points": 35,
+      "protect_first": {"action": "BLOCK_CARD", "who": "customer, with Face ID", "say": "I can lock your card now. If you find it, you can unlock it; it unlocks by itself after 15 days."},
+      "steps": [
+        {"who": "AI (Clario)", "step": "Ask: misplaced (lock it for up to 15 days) or lost or stolen (cancel and replace)?", "source": "westpac_lost_card"},
+        {"who": "customer", "step": "Lock the card (temporary) or report it lost or stolen", "source": "westpac_lost_card"},
+        {"who": "AI (Prorio)", "step": "Check the last transactions for anything the customer doesn't recognise", "source": "team_design"},
+        {"who": "officer", "step": "Approve cancellation and a replacement to the address on file", "source": "westpac_lost_card"}
+      ],
+      "ai_may": ["BLOCK_CARD (only when the customer chooses it)", "prepare ORDER_REPLACEMENT_CARD"],
+      "officer_must": ["approve the replacement", "any change of delivery address"],
+      "required_checks": ["confirm the address on file; an address change is a separate officer-only request (gate G3)"],
+      "customer_message": "Your card is locked. Once approved, a replacement goes to the address we have on file (case {case_id}).",
+      "timeframes": [{"what": "Temporary lock", "rule": "Up to 15 days, then it unlocks automatically", "source": "westpac_lost_card"}],
+      "notes": "Debit: only the reported card is cancelled. Credit: additional cardholder cards are cancelled too.",
+      "sources": ["westpac_lost_card", "epayments_code"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "MONEY_MISSING",
+      "title": "Payment sent but not received, or sent to the wrong account",
+      "version": "1.0",
+      "harm_points": 35,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Work out which it is: the payee says it never arrived (trace) or it went to the wrong account (recall)", "source": "westpac_recall"},
+        {"who": "AI (Prorio)", "step": "Draft a payment trace or a recall for the linked transaction", "source": "westpac_recall"},
+        {"who": "officer", "step": "Submit the request; for a mistaken payment, the sending bank asks the receiving bank to return the funds", "source": "epayments_code"},
+        {"who": "AI (Clario)", "step": "Tell the customer the rule that applies, based on how long ago the payment was made", "source": "afca_mistaken"}
+      ],
+      "ai_may": ["prepare DRAFT_PAYMENT_TRACE", "prepare DRAFT_PAYMENT_RECALL", "SEND_CUSTOMER_UPDATE (status only)"],
+      "officer_must": ["submit the trace or recall"],
+      "required_checks": ["the transaction belongs to this customer and is outgoing"],
+      "customer_message": "We've started a {trace_or_recall} for your payment (case {case_id}). Recovery isn't guaranteed, and the timing depends on how long ago it was paid.",
+      "timeframes": [
+        {"what": "Sending bank", "rule": "Request the return within 5 business days of the report (best practice: start within 2)", "source": "epayments_code"},
+        {"what": "Reported within 10 business days", "rule": "If funds are there and it's a genuine mistake, they are returned", "source": "afca_mistaken"},
+        {"what": "Reported between 10 business days and 7 months", "rule": "Funds are frozen; the recipient has 10 business days to show they're entitled to them", "source": "afca_mistaken"},
+        {"what": "Reported after 7 months", "rule": "Returned only if the recipient agrees", "source": "afca_mistaken"}
+      ],
+      "sources": ["westpac_recall", "epayments_code", "afca_mistaken", "moneysmart_transactions"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "HARDSHIP",
+      "title": "Customer in financial difficulty",
+      "version": "1.0",
+      "harm_points": 30,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Respond with care; explain that hardship support exists and that a person will help", "source": "westpac_tough_times"},
+        {"who": "AI (Prorio)", "step": "Draft notes: what changed, which products are affected, any vulnerability cues", "source": "team_design"},
+        {"who": "officer", "step": "Assess and agree any arrangement; refer to a financial counsellor where useful", "source": "westpac_tough_times"}
+      ],
+      "ai_may": ["prepare DRAFT_HARDSHIP_NOTES", "BOOK_CALLBACK"],
+      "officer_must": ["the hardship assessment", "any arrangement or change to repayments"],
+      "required_checks": ["extra care for customers in vulnerable circumstances (Banking Code of Practice)"],
+      "customer_message": "Thanks for telling us. A specialist will contact you about support options (case {case_id}).",
+      "timeframes": [{"what": "Hardship-related complaints", "rule": "Response within 21 days", "source": "asic_rg271"}],
+      "sources": ["westpac_tough_times", "asic_rg271"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "DISPUTE_CHARGE",
+      "title": "Known merchant, wrong amount or service not received",
+      "version": "1.0",
+      "harm_points": 20,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Suggest contacting the merchant first, checking receipts, and checking with any additional cardholders", "source": "westpac_disputes"},
+        {"who": "AI (Clario)", "step": "If still pending, explain it can't be disputed until it finishes processing (usually up to 5 business days)", "source": "westpac_pending"},
+        {"who": "AI (Prorio)", "step": "Draft the dispute with the transaction and evidence", "source": "westpac_disputes"},
+        {"who": "officer", "step": "Lodge the dispute; a dispute reference number is issued", "source": "westpac_disputes"}
+      ],
+      "ai_may": ["prepare RAISE_DISPUTE"],
+      "officer_must": ["lodge the dispute", "any temporary credit"],
+      "required_checks": ["the transaction is no longer pending"],
+      "customer_message": "Your dispute is being lodged (case {case_id}). Disputes are usually resolved within 45 days of us receiving the information needed.",
+      "timeframes": [{"what": "Card disputes", "rule": "Usually resolved within 45 days of receiving the required information", "source": "westpac_disputes"}],
+      "sources": ["westpac_disputes", "westpac_pending"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "COMPLAINT",
+      "title": "Complaint about service",
+      "version": "1.0",
+      "harm_points": 15,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Capture what happened, when, the outcome wanted, and any reference numbers", "source": "westpac_complaints"},
+        {"who": "officer", "step": "Acknowledge with a complaint reference number, review, respond, and explain the outcome and reasons", "source": "westpac_complaints"}
+      ],
+      "ai_may": ["prepare DRAFT_COMPLAINT_RESPONSE"],
+      "officer_must": ["the response and outcome"],
+      "required_checks": [],
+      "customer_message": "Your complaint is recorded (reference {case_id}). We'll keep you updated and explain our decision.",
+      "timeframes": [{"what": "Standard complaints", "rule": "Response within 30 calendar days", "source": "asic_rg271"}],
+      "sources": ["westpac_complaints", "asic_rg271"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "DETAILS_CHANGE",
+      "title": "Change of address, phone, email or other personal details",
+      "version": "1.0",
+      "harm_points": 5,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Record the request; never make the change", "source": "team_design"},
+        {"who": "AI (Prorio)", "step": "Check for takeover signs: recent device or password change, new payees", "source": "team_design"},
+        {"who": "officer", "step": "Verify identity and make the change; name or date of birth changes need a branch visit with documents", "source": "westpac_update_details"}
+      ],
+      "ai_may": [],
+      "officer_must": ["any change to personal or contact details"],
+      "required_checks": ["one-time security code or officer identity check", "gate G3: never below P3"],
+      "customer_message": "For your security, a person will make this change (case {case_id}).",
+      "timeframes": [],
+      "sources": ["westpac_update_details"],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "CARD_DELIVERY",
+      "title": "When will my card arrive?",
+      "version": "1.0",
+      "harm_points": 5,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Answer from card tracking: dispatch date, carrier, status, expected date", "source": "team_design"},
+        {"who": "AI (Prorio)", "step": "If past the expected date, prepare a replacement to the address on file", "source": "team_design"},
+        {"who": "officer", "step": "One-click approve the replacement (P4)", "source": "team_design"}
+      ],
+      "ai_may": ["prepare ORDER_REPLACEMENT_CARD", "SEND_CUSTOMER_UPDATE"],
+      "officer_must": ["approve the replacement"],
+      "required_checks": ["address on file only; any address change goes to DETAILS_CHANGE"],
+      "customer_message": "Your card was sent on {dispatched} and is expected on {expected}.",
+      "timeframes": [],
+      "sources": [],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    },
+    {
+      "issue_type": "GENERAL_ENQUIRY",
+      "title": "General question about Westpac products or rules",
+      "version": "1.0",
+      "harm_points": 0,
+      "protect_first": null,
+      "steps": [
+        {"who": "AI (Clario)", "step": "Answer only from the Westpac knowledge base, with the source link", "source": "team_design"},
+        {"who": "AI (Clario)", "step": "If the knowledge base has no answer, say so and offer a person", "source": "team_design"}
+      ],
+      "ai_may": ["SEND_CUSTOMER_UPDATE"],
+      "officer_must": [],
+      "required_checks": ["no open-web answers"],
+      "customer_message": "{answer} (Source: {source_url})",
+      "timeframes": [],
+      "sources": [],
+      "last_changed_by": "protocol owner (demo seed)",
+      "change_log": []
+    }
+  ],
+  "sources": {
+    "westpac_how_to_report": {"title": "Westpac: How to report fraud and unusual activity", "url": "https://www.westpac.com.au/security/how-to-report/", "read": "2026-11-16"},
+    "westpac_safeblock_guide": {"title": "Westpac: What to do if you think you've been scammed (SafeBlock guide)", "url": "https://www.westpac.com.au/security/articles/safeblock-practical-guide/", "read": "2026-11-16"},
+    "westpac_lost_card": {"title": "Westpac: Lost, stolen or misplaced card", "url": "https://www.westpac.com.au/personal-banking/online-banking/making-the-most/lost-stolen-card/", "read": "2026-11-16"},
+    "westpac_fraud_card": {"title": "Westpac: What to do if there is a fraudulent transaction on your card", "url": "https://www.westpac.com.au/credit-cards/manage/fraud-disputes-lost-stolen-cards/fraudulent-transaction", "read": "2026-11-16"},
+    "westpac_disputes": {"title": "Westpac: Card disputes and how to resolve them", "url": "https://www.westpac.com.au/credit-cards/manage/fraud-disputes-lost-stolen-cards/disputing-transaction", "read": "2026-11-16"},
+    "westpac_pending": {"title": "Westpac: Can I cancel or dispute a pending transaction?", "url": "https://www.westpac.com.au/faq/pt-cancel-pending-transaction/", "read": "2026-11-16"},
+    "westpac_recall": {"title": "Westpac: How to submit a payment recall or trace request", "url": "https://www.westpac.com.au/faq/incorrect-payment/", "read": "2026-11-16"},
+    "westpac_complaints": {"title": "Westpac: Make a complaint", "url": "https://www.westpac.com.au/contact-us/complaints-compliments/", "read": "2026-11-16"},
+    "westpac_update_details": {"title": "Westpac: Update your contact details", "url": "https://www.westpac.com.au/personal-banking/online-banking/making-the-most/update-details/", "read": "2026-11-16"},
+    "westpac_tough_times": {"title": "Westpac: Support with tough times", "url": "https://www.westpac.com.au/help/support-with-tough-times/", "read": "2026-11-16"},
+    "epayments_code": {"title": "ASIC: ePayments Code (2022 version)", "url": "https://download.asic.gov.au/media/lloeicwb/epayments-code-published-02-june-2022.pdf", "read": "2026-11-16"},
+    "afca_mistaken": {"title": "AFCA: Mistaken internet payments", "url": "https://www.afca.org.au/about-afca/publications/mistaken-internet-payments", "read": "2026-11-16"},
+    "afca_unauthorised": {"title": "AFCA: Factsheet on unauthorised transactions", "url": "https://www.afca.org.au/about-afca/publications/fact-sheet-unauthorised-transactions", "read": "2026-11-16"},
+    "moneysmart_scammed": {"title": "Moneysmart: What to do if you've been scammed", "url": "https://moneysmart.gov.au/check-and-report-scams/what-to-do-if-youve-been-scammed", "read": "2026-11-16"},
+    "moneysmart_transactions": {"title": "Moneysmart: Bank transaction problems", "url": "https://moneysmart.gov.au/banking/bank-transaction-problems", "read": "2026-11-16"},
+    "aba_scammed": {"title": "Australian Banking Association: What to do if you've been scammed", "url": "https://www.ausbanking.org.au/what-to-do-if-youve-been-scammed/", "read": "2026-11-16"},
+    "asic_rg271": {"title": "AFCA summary of ASIC RG 271 maximum IDR timeframes", "url": "https://afca.org.au/members/rg271/new-maximum-idr-timeframes", "read": "2026-11-16"}
+  }
+}
