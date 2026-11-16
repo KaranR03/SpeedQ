@@ -1,35 +1,48 @@
-# Never Repeat Yourself
+# Beacon Assist
 
-**Team Astars · Westpac hackathon**
+**Team Astars · Westpac Innovation & Coding Competition (Hackathon) 2026**
 
-When a customer rings the bank about something urgent, like a scam in progress, they often explain it once to a phone
-assistant, then again to a person, then again to a specialist. Meanwhile the cases that need help *right now* sit in
-the same line as a question about where a card is..
+> *Red answers questions. Beacon's agents work the case: they look things up, protect you, rank you fairly, and hand
+> a ready-to-approve solution to a person.*
 
-**Never Repeat Yourself** fixes both problems:
+When a customer needs help from their bank, they often explain the problem to a bot, then again to a person, then
+again to a specialist. Meanwhile a customer being scammed *right now* waits in the same line as someone asking when
+their card will arrive.
 
-1. The customer explains their problem **once**, to a voice assistant. It writes the problem up as a short **case card**
-   and passes it on, so nobody has to ask again.
-2. This system takes that case card, **works out for itself how urgent it is**, and puts it in the right place in a
-   queue that a bank officer watches live. The officer sees *why* each case ranks where it does, then approves, changes
-   or takes over the fix.
+**Beacon Assist** fixes both, inside the Westpac app the customer is already signed in to, using two AI agents:
 
-This repository is the part after the phone call: the **backend** that receives and ranks cases, and the **officer
-console** (a web page) that the officer works from.
+- **Clario** (the front door) talks to the customer by text or voice, answers what it safely can from the customer's
+  own data or the Westpac knowledge base, protects scam victims first, and writes the problem up **once** as a
+  **Customer Service Card** that the customer can see and correct.
+- **Prorio** (Priority and Protocol) works behind the scenes. It ranks every card by **how fast harm grows**, using
+  account evidence rather than how loudly someone asks, and drafts a proposed solution from the bank's **Protocol
+  Database**.
 
-> All customer data in this project is made up. No real banking data is used anywhere. No money is ever moved.
+A **Customer Service Officer** then sees the ranked list, reads why each case sits where it does, and chooses
+**Approve**, **Modify** or **Manual**. Every decision feeds back into the Protocol Database, under a team lead's
+approval, so proposals improve over time.
+
+> All customer data in this project is made up. No real banking data is used anywhere. The AI never moves money.
 
 ---
 
 ## Contents
 
-- [What happens, step by step](#what-happens-step-by-step)
-- [How urgency is worked out](#how-urgency-is-worked-out)
-- [The officer console](#the-officer-console)
+- [Why it's different](#why-its-different)
+- [Who and what is involved](#who-and-what-is-involved)
+- [How it works, step by step](#how-it-works-step-by-step)
+- [Design principles](#design-principles)
+- [How priority is worked out](#how-priority-is-worked-out)
+- [Who may do what](#who-may-do-what)
+- [The Customer Service Card](#the-customer-service-card)
+- ["I want to talk to a person"](#i-want-to-talk-to-a-person)
+- [The officer dashboard](#the-officer-dashboard)
+- [The Protocol Database and the learning loop](#the-protocol-database-and-the-learning-loop)
+- [Surge mode (stretch goal)](#surge-mode-stretch-goal)
 - [The demo customers](#the-demo-customers)
+- [Build status: what this repo runs today](#build-status-what-this-repo-runs-today)
 - [Run it](#run-it)
-- [Connecting the voice assistant](#connecting-the-voice-assistant)
-- [What the officer can do](#what-the-officer-can-do)
+- [Voice channel (optional)](#voice-channel-optional)
 - [Reference: backend endpoints](#reference-backend-endpoints)
 - [Where data is kept](#where-data-is-kept)
 - [Settings](#settings)
@@ -40,169 +53,395 @@ console** (a web page) that the officer works from.
 
 ---
 
-## What happens, step by step
+## Why it's different
 
-```
- Customer rings          Voice assistant            This backend                 Officer console
- ───────────────        ─────────────────         ────────────────────         ─────────────────────
- explains the     ──▶   listens, writes up   ──▶  checks the customer's   ──▶  queue, most urgent
- problem once           a case card and           account, works out the        first, refreshing
-                        sends it                  urgency score itself          every 2 seconds
-                                                  and adds it to the queue
-                                                                                      │
-                                                                                      ▼
-                                                                         officer reads the reasons,
-                                                                         approves / edits / takes over
-                                                                         and every step is logged
-```
+1. **Glass-box card.** The customer sees, corrects and tracks the bank's record of their problem. No black-box queue.
+2. **Harm clock.** Priority comes from how fast harm grows, and account evidence beats words.
+3. **"AI can close doors; only people open them."** A safety rule anyone can remember.
+4. **Two agents as a firewall.** The public-facing AI has almost no power; the powerful AI never hears the customer
+   directly.
+5. **Officers teach, leads approve.** A protocol library that improves safely.
+6. **Surge mode** (stretch goal). An outage becomes one incident, not hundreds of separate calls.
 
-1. **The call.** A customer talks to the voice assistant (built separately, on a service called Retell). When the call
-   ends, the assistant sends a **case card** to this backend: who the customer is, what went wrong, which transactions
-   are involved, what it suggests doing, and its own guess at how urgent it is.
-2. **Checking the facts.** The backend does **not** take the assistant's word for how urgent the case is. It looks the
-   customer up in the account data (new payees, large transfers, lockouts) and **calculates the urgency itself**. Two
-   customers with the same story always get the same result.
-3. **The queue.** The case goes into a queue sorted by urgency. Simple questions that the assistant already
-   answered (for example "when does my card arrive?") are saved but **kept out of the queue**, because no officer is
-   needed.
-4. **The officer acts.** The console shows the queue. The officer opens a case, reads the reasons for its ranking,
-   and chooses one of: **Approve** the suggested fix, **Modify** it, or **Do it myself**.
-5. **The record.** Every decision and every action is written to an **audit log** that says who did what, when, and
-   what changed.
-
-The moment the demo is built around: a scam case arrives, the queue **reorders on screen by itself** to put it first,
-the reasons are visible, and the officer clicks Approve.
+Beacon Assist is not a scripted chatbot with fixed menus. The same opening ("I need to talk to someone") leads to
+different next steps for different customers, the card shows what each agent looked up (for example *"Checked card
+delivery: in transit, due 19 Nov"* or *"Protocol CARD_LOST_STOLEN v1.0"*), and Clario says plainly when something is
+beyond it (*"I can't change your address; I've passed it to an officer"*).
 
 ---
 
-## How urgency is worked out
+## Who and what is involved
 
-Every case gets a **score**. A higher score means more urgent, and the score decides where the case sits in the queue.
+| Part | What it is |
+|---|---|
+| **Customer** | A Westpac customer already signed in to the Westpac app. Everything happens inside the app. |
+| **Clario** (Agent 1, "query enabler") | The front-door AI. Talks to the customer by text or voice, understands the problem, answers what it safely can, and creates the Customer Service Card. |
+| **Prorio** (Agent 2, "Priority and Protocol") | The back-office AI. Ranks every incoming card into one priority list and looks up the Protocol Database to draft a proposed solution. Never talks to the customer directly. |
+| **Customer Service Card** | A short structured summary of the customer's issue, created by Clario. The customer can view it and ask Clario to correct it. |
+| **User's database** | The signed-in customer's own details (name, customer ID, accounts, cards, deliveries). Clario reads it without asking security questions, because the customer is already logged in. |
+| **Westpac knowledge base** | Westpac's public product and help information, used for general questions. |
+| **Protocol Database** | The bank's procedures for each type of issue. Prorio reads it to propose solutions; officers' decisions are written back to it as suggestions. |
+| **Customer Service Officer Dashboard** | Where human officers see the priority list and proposed solutions and make decisions. |
 
-Each case is about **one issue**, so the score starts from that issue's **weightage**. Some issues simply matter more
-than others: a scam in progress is weighted far higher than a card delivery question. Most cases are ranked on their
-issue alone. A case only gains extra weightage when a warning sign actually applies to it, or as it waits.
+---
+
+## How it works, step by step
 
 ```
-score = issue weightage  +  warning signs (only if they apply)  +  waiting time
+ Customer (in app)         Clario                        Prorio                       Officer dashboard
+ ────────────────         ────────────────────          ─────────────────────        ──────────────────────
+ taps Help, types   ──▶   identifies customer     ──▶   scores and ranks the   ──▶   priority list with
+ or speaks                (no security questions)       card (code, not the          reasons and a proposed
+                          picks a route A / B / C / D   model), looks up the         solution
+                          answers, protects, or         Protocol Database,                 │
+                          builds the card               drafts a solution                  ▼
+        ▲                        │                                                  Approve / Modify / Manual
+        │                        ▼                                                         │
+        └──── views and corrects the card, sees live status, gets the outcome ◀────────────┘
+                                                                  decision written back to the Protocol Database
 ```
 
-### 1. Issue weightage (what kind of problem it is)
+1. **Customer asks for help.** The customer taps Help in the Westpac app.
+2. **Text or voice.** Text goes straight to Clario. Voice is converted to text, with automatic language recognition,
+   then sent to Clario.
+3. **Clario identifies the customer** from the User's database (name, customer ID, account details). No security
+   questions, because the customer is already signed in.
+4. **Clario understands the problem and chooses one of four routes:**
 
-Every case has exactly one of these, and it is the starting point of the score.
+   | Route | When | What Clario does | Tier |
+   |---|---|---|---|
+   | **A. Personalised question** | About the customer's own account, for example "my card hasn't arrived" | Answers from the User's database | **Tier 1** |
+   | **B. General question** | About Westpac products or rules | Answers from the Westpac knowledge base, with a source link | **Tier 2** |
+   | **C. Scam or priority keywords** | "I'm being scammed", "my account is locked", "money was moved without me" | Does not try to answer. Protects first, then sends the card **straight to Prorio** | n/a |
+   | **D. "I want to talk to a person"** | Any time | Never refuses. Asks one triage question, builds a short card and sends it to Prorio | n/a |
 
-| Issue | Weightage |
+   After a Route A or B answer, Clario asks *"Did that solve it?"* (**Yes, thanks** / **No, get me help**). If the
+   customer is not satisfied, the card goes to Prorio.
+5. **The Customer Service Card.** Whenever a case goes to Prorio, Clario has created a card. The customer can view it
+   in the app, and if anything is wrong they tell Clario, who corrects it.
+6. **Prorio does two jobs.** **Priority:** scores and ranks every card into one list. **Protocol:** finds the matching
+   procedure in the Protocol Database and drafts a **proposed solution**.
+7. **Officer dashboard.** The priority list and each proposed solution appear on the dashboard.
+8. **Officer decision.** **Approve** (the proposal as is), **Modify** (edit it, then approve) or **Manual** (ignore
+   the proposal and handle it from scratch).
+9. **Action.** After Approve or Modify, the AI carries out the approved, low-risk actions. With Manual, the officer
+   does it.
+10. **Outcome.** Clario tells the customer what was done, in their language, with a reference number. The card's
+    status ends at **Done**.
+11. **Learning loop.** Every decision (approved, modified or manual) is written back to the Protocol Database as a
+    suggestion, which a team lead approves before it becomes a rule.
+
+**Who does the work (risk rule).** High-priority and risky cases (P1, P2 and P3, for example locking or checking an
+account, scams) are **done by officers**. The lowest-priority, simple cases (P4, for example a delivery date) are
+**done by the AI after an officer approves**. Rule of thumb: if an action would be risky in AI hands, a human does it.
+
+---
+
+## Design principles
+
+Every rule in Beacon Assist rests on these six.
+
+1. **Harm clock.** Rank a case by how fast harm grows if nobody acts, not by how loudly the customer asks or which
+   menu button they pressed.
+2. **AI can close doors; only people open them.** An AI may only take actions that make an account safer, can be
+   undone, and the customer asked for (with a fresh Face ID or fingerprint check). Anything that loosens security,
+   changes identity or contact details, or moves money needs a human.
+3. **Maker and checker.** The AI is the maker (drafts), the officer is the checker (approves). Banks already use this
+   four-eyes control; we apply it to AI.
+4. **Least privilege, split by audience.** Clario faces customers, so it sees only the signed-in customer and never the
+   bank's internal playbooks. Prorio faces staff, so it sees playbooks and cross-case patterns but never takes the
+   customer's raw words as instructions.
+5. **Glass-box card.** The customer sees what the bank has written down about their problem, can correct it, and can
+   watch its status live.
+6. **Grounded or escalate.** Every answer comes from the customer's own data or the Westpac knowledge base, with a
+   source. If neither has it, Clario says so and offers a person. It never guesses, and it never browses the open web.
+
+---
+
+## How priority is worked out
+
+### What counts as high and low
+
+- **High priority:** money is leaving or about to leave, money was taken without consent, the customer cannot reach
+  their own money, someone may be controlling the customer or the account right now, or the account's security is in
+  question.
+- **Low priority:** information or a routine service where nothing is at risk and nothing about security changes (a
+  delivery date, a statement copy, a fee explanation, branch hours).
+- **The trap: "looks simple, isn't safe."** Changing an address, phone number or email, adding a device, raising a
+  limit or removing a block look like admin, but they are the first steps in an account takeover. These are always
+  handled by an officer, at P3 or higher. ("Finding the address" is a safe read; "changing the address" is not.)
+
+### The score (0 to 100)
+
+```
+Score = Harm (0-60) + Time to harm (0-20) + Verified account signals (0-20) + Care needs (0-10) + Waiting (0-10)
+        capped at 100
+```
+
+**The score is computed by code, not by the language model.** Clario's model only classifies the issue type and
+extracts cues; a backend function adds the points. The same facts always give the same score, and every point has a
+written reason.
+
+| Harm (what is at stake) | Points |
 |---|---:|
-| Scam in progress | 100 |
-| Unauthorised fraud | 80 |
-| Money missing | 70 |
-| Card lost or stolen | 60 |
-| Financial hardship | 60 |
-| Disputed charge | 40 |
-| Card delivery | 10 |
-| General enquiry | 10 |
+| Scam in progress (told to move money, remote access, someone on the line) | 60 |
+| Unauthorised transaction (money taken without consent) | 45 |
+| Locked out of own money, or suspected account takeover | 40 |
+| Card lost or stolen | 35 |
+| Payment missing (sent but not received, mistaken payment) | 35 |
+| Financial hardship | 30 |
+| Disputed charge (known merchant, wrong amount or service) | 20 |
+| Complaint about service | 15 |
+| Service request (delivery, statement, address lookup) | 5 |
+| General question | 0 |
 
-### 2. Warning signs (extra weightage, only when they apply)
+| Time to harm | Points |
+|---|---:|
+| Harm is happening now: money still leaving, scammer still in contact, repeated debits | +20 |
+| Money may still be recoverable if acted on today (transaction under 72 hours old or still pending) | +10 |
+| Neither | 0 |
 
-A case can have none, one or several of these. Each one that applies adds its weightage on top of the issue.
+| Verified account signal (+10 each, maximum +20; from account data only, never from the customer's words) |
+|---|
+| New payee added in the last 24 hours |
+| Transfer much larger than usual (over $1,000, or over 3 times the customer's typical payment) |
+| Password, device or contact details changed in the last 7 days |
+| Card used somewhere unusual for this customer |
+| Payee already appears in other open scam cards today (Prorio's cross-case check) |
 
-| Warning sign | Weightage | Where it comes from |
-|---|---:|---|
-| New payee added within 24 hours of the transfer | +15 | **Checked in the account data** |
-| Transfer over $1,000 | +15 | **Checked in the account data** |
-| Recent account lockout | +10 | **Checked in the account data** |
-| SafeBlock already on the account | +10 | **Checked in the account data** |
-| Customer says someone is pressuring them | +20 | What the customer said on the call |
-| Signs the customer may be vulnerable | +10 | What the customer said on the call |
+| Care needs (+10 once) |
+|---|
+| Customer cannot pay for essentials (food, rent, medication), or shows vulnerability cues: distress, confusion, coaching, needs language support, an older customer struggling with digital steps |
 
-The first four are worked out by the backend from the customer's real (demo) account records, using only the
-transactions linked to the case **that belong to that customer**. The last two can only be known from the
-conversation, so they are taken from the voice assistant.
+| Waiting |
+|---|
+| +2 for every 10 minutes in the queue, maximum +10 |
 
-### 3. Waiting time
+### Bands
 
-**+1 added to the score for every minute the case has waited, up to +40.** This is the fairness rule: a less urgent case that has
-been waiting a long time slowly climbs the queue and doesn't get stuck behind a steady stream of bigger cases. The
-score is recalculated every time the queue is read, so the waiting time is always current.
+Response targets are Beacon Assist design targets, not Westpac figures.
 
-### The "no gaming" rule
+| Band | Score | Who handles | AI's job | Design target | Customer sees |
+|---|---|---|---|---|---|
+| **P1 Critical** | 80 to 100 | Fraud specialist, immediately | Clario has already offered SafeBlock or a card lock; Prorio drafts the recall and scam report | Warm handoff to the next available specialist, aim under 2 minutes | "A fraud specialist is joining now" |
+| **P2 High** | 60 to 79 | Officer | Prorio drafts the full proposal | Within 30 minutes, or a booked callback | Position in queue, or callback time |
+| **P3 Medium** | 40 to 59 | Officer | Prorio drafts the full proposal | Same business day | "With our team today", reference number |
+| **P4 Low** | 0 to 39 | AI prepares, officer approves with one click | Prorio prepares the complete reply or action from the protocol | Same business day, usually minutes | Status updates, then the answer |
 
-If a call is labelled **scam in progress** but the account shows **no warning signs at all**, the issue weightage is
-**capped at 60** instead of 100, and the case is flagged *"Customer reports scam, no account signals yet: officer to
-verify"*. Words alone cannot put a case at the top of the queue. The same goes for the voice assistant's own score:
-it is stored for reference as the "voice agent estimate" but **never used for ranking**.
+Most P4 questions never reach the queue: Clario answers them at Tier 1 or Tier 2. P4 cases are the ones where the
+customer was not satisfied or a routine action needs sign-off.
 
-### Bands (what the score means)
+### Gates (they override the score)
 
-| Band | Score | What the voice assistant tells the caller |
+| Gate | Rule |
+|---|---|
+| **G1 Words alone can't reach P1** | Without at least one verified account signal, the score is capped at 79 (P2) and flagged *"Customer reports scam, no account signals yet: officer to verify"*. Typing "scam" does not jump the queue. |
+| **G2 Protect first** | For scams, unauthorised transactions and lost cards, Clario offers SafeBlock or a card lock **before** the case is queued (the customer's choice, with Face ID). |
+| **G3 Security floor** | Any request that changes identity, contact details or devices, raises a limit or removes a lock is officer-only and never below 40 (P3). |
+| **G4 Ageing ceiling** | Waiting can lift a case by at most one band, so routine cases can't overtake real emergencies, but nothing waits forever. |
+| **G5 Officer override** | An officer can re-rank any case with a reason; it is logged and reviewed. |
+| **G6 One problem, one card** | Repeat contacts about the same issue update the existing card instead of creating new ones. |
+
+### Worked examples (synthetic customers)
+
+| Case | Calculation | Score and band |
 |---|---|---|
-| **P1** | 120 or more | Next available specialist, warm transfer to the fraud team |
-| **P2** | 70 to 119 | About 5 minutes |
-| **P3** | 30 to 69 | About 20 minutes, a reference number, callback offered |
-| **P4** | under 30 | Callback within one business day |
+| **Maria:** "Someone from the bank told me to move my savings"; $4,800 to a new payee 2 hours ago | Scam 60 + happening now 20 + new payee 10 + large transfer 10 | **100, P1** |
+| Same words, but no unusual activity on the account | Scam 60 + happening now 20 = 80, capped by G1 | **79, P2**, "officer to verify" |
+| **Priya:** $89 "SP DIGITALHUB SUBS" that isn't hers (after Clario first shows her the merchant details) | Unauthorised 45 + recoverable 10 | **55, P3**; card lock offered at once (G2) |
+| Priya, and the card was also used overseas yesterday | 55 + unusual location 10 | **65, P2** |
+| **Minh:** $650 rent sent by Osko, landlord says not received, prefers Vietnamese | Payment missing 35 + recoverable 10 + care (rent, language) 10 | **55, P3** |
+| Locked out after a password change from a new phone, can't buy groceries | Locked out 40 + device change 10 + care 10 | **60, P2** |
+| Lost job, can't make the home loan payment | Hardship 30 + care 10 | **40, P3**, officer-led (hardship is a regulated assessment) |
+| **Sam:** "When is my new card arriving?", not satisfied after Clario's answer | Service 5 | **5, P4**, AI prepares, officer approves |
+| "Please change my address" | Service 5, raised by G3 | **40, P3**, officer-only |
 
-### Worked example: Maria
+### Why this holds up
 
-Maria's issue is a scam in progress (weightage 100), and several warning signs apply to her. Priya's disputed charge,
-by contrast, has no warning signs, so her score is just the issue's weightage of 40.
-
-| Reason | Weightage |
-|---|---:|
-| Scam in progress (the issue) | +100 |
-| New payee added in the 24 hours before the transfer | +15 |
-| Transfer over $1,000 ($4,800) | +15 |
-| Customer says a caller is pressuring her | +20 |
-| Signs she may be vulnerable | +10 |
-| Waiting 0 minutes | +0 |
-| **Total** | **160 → P1** |
-
-Every reason is shown to the officer in plain words, each ending in its weightage, exactly like the table above.
+- It ranks by harm and recoverability, which is how fraud teams already think: minutes matter while money can still be
+  stopped.
+- Account evidence outweighs words, so it is hard to game, and a gamed case still lands with an officer, not an AI.
+- Vulnerability gets a boost, but a capped one (+10), so it helps without overriding real emergencies.
+- It is **designed to support** the complaint and hardship response timeframes in ASIC RG 271 and the
+  detect-and-disrupt expectations of the Scams Prevention Framework. It is a prototype; we do not claim compliance.
 
 ---
 
-## The officer console
+## Who may do what
 
-A web page, built to read clearly on a projector. Colour is never the only signal: every band is shown as a coloured
-tag **and** as text ("P1 URGENT", "P2 HIGH", "P3 MEDIUM", "P4 LOW").
+**Yes** = may use directly. **Draft** = may prepare, a human submits. **No** = never.
 
-**Queue view**
-- Cases sorted by score, highest first. It refreshes by itself every 2 seconds, with no button to press.
-- Each row shows the band, customer, case reference, issue, score, how long it has waited, a short summary and an
-  **Open** button. The reasons for the ranking sit underneath each row.
+| Tool or action | Clario | Prorio | Officer |
+|---|---|---|---|
+| Customer profile (name, customer ID, preferred language) | Yes, signed-in customer only | Only customer ID, language and care flags for the case | Yes |
+| Accounts and balances (masked to last 4 digits) | Yes | No | Yes |
+| Recent transactions (last 90 days) | Yes | Only transactions linked to the case, plus signal flags from the scoring code | Yes |
+| Card status and delivery tracking | Yes | Only for card cases | Yes |
+| Account security status | Status only (for example "SafeBlock is on") | Signal flags from the scoring code | Yes, full detail |
+| Westpac knowledge base | Yes, with a source link | Yes | Yes |
+| Open cases and case status | Own only | Whole queue | Yes |
+| Protocol Database | **No** | Read | Read; changes need approval |
+| Other customers' data | **No** | Pattern flags only (for example "this payee is in 3 scam cards today"), no personal details | Per their permissions |
+| Create and edit the Customer Service Card | Yes, customer's words, confirmed by the customer | Adds score, reasons and proposal; cannot change what the customer said | Can annotate |
+| Ask the customer a question, send status updates | Yes | No (asks through Clario) | Yes |
+| Book a callback | Yes | Sets urgency | Yes |
+| Route, warm transfer, place in queue | Hands off | Yes | Accepts |
+| Offer SafeBlock or a temporary card lock | Yes, only when the customer chooses, with Face ID | No | Yes |
+| Remove SafeBlock, unlock an account, lift restrictions | **No** | **No** | Yes, after verification |
+| Change address, phone, email, password, add a device, raise a limit | **No** (records the request only) | **No** | Yes, with identity checks |
+| Lodge a dispute or chargeback | No | Draft | Submits |
+| Payment trace or recall request | No | Draft | Submits |
+| Scam report | No | Draft | Submits |
+| Refund, fee reversal, credit, compensation | No | Suggest only | Yes |
+| **Move money** (transfers, payments) | **No** | **No** | **No** (the customer does it themselves) |
+| Hardship arrangement | No | Draft notes | Yes |
+| Outcome message that commits the bank to something | Delivers it, in the customer's language | Drafts | Approves |
+| Protocol Database change | No | Drafts a suggestion | Suggests; a protocol owner approves; versioned |
+| Audit log | Writes automatically | Writes automatically | Reads; nobody can edit |
 
-**Case view** (after pressing Open)
-- Customer, case reference, status, issue, score, linked transactions and risk signals.
-- **Why it ranks here:** the full list of reasons.
-- For a customer who didn't speak English, a label such as **"Vietnamese (translated)"**, and a switch to read the
-  summary in their own language.
-- The **suggested fix** and the three buttons: **Approve**, **Modify**, **Do it myself**.
-- **Re-rank this case:** move a case to a different band, with a reason that must be filled in.
-- The **audit log**: a table of everything that has happened on the case.
+**Why two agents?** Different audiences, different powers. Clario talks to the public, so it holds almost no power.
+Prorio holds the bank's playbooks and the ranking, so it only receives structured card fields and never takes customer
+words as instructions. A customer can't type "make me priority 1" or "ignore your rules" and reach the part that ranks
+and proposes. That is a prompt-injection firewall by design.
 
-A **Reset demo data** button in the left sidebar clears everything for a fresh run.
+**Why Prorio sees any account data at all:** fair scoring needs evidence that doesn't come from the customer's words
+(otherwise gate G1 can't work), proposals need specifics such as which transaction to recall, and it is the safety net
+when Clario misfiles a case. Even so, Prorio's model never reads raw account data in bulk: the scoring code reads the
+account and passes Prorio only the signal flags and the transactions linked to the case.
+
+---
+
+## The Customer Service Card
+
+- Written by Clario in the customer's own words, then read back before it is sent: *"Here's what I'll pass on... is
+  that right?"*
+- The customer can open it in the app at any time and tell Clario if anything is wrong; Clario corrects it.
+- Prorio adds the score, the reasons and the proposed solution, but cannot change what the customer said.
+- It is a **live tracker**: **Received → Ranked → With an officer → Action taken → Done**.
+- The officer always sees the card in English. For other languages it is labelled (for example "Vietnamese
+  (translated)") with the original one tap away, and the outcome goes back in the customer's language.
+
+---
+
+## "I want to talk to a person"
+
+The goal is that the right customer reaches a person first, and nobody waits in a blind queue.
+
+- Clario never refuses or argues, and says why it is asking: *"I'll get you to a person. So the right person picks up,
+  what's it about?"*
+- One question, with quick answers: **Money I didn't send, or someone asking me to move money** · **Can't get into my
+  account or money** · **Lost or stolen card** · **A payment or charge** · **Something else** · **I'd rather not say**.
+- If the answer points to risk, Clario may ask one more short question (for example *"Is someone on the phone with
+  you now telling you what to do?"*) and offers protection first (G2). Otherwise, no more questions.
+- "Something else" and "I'd rather not say" are valid. The case is still queued, scored from account signals alone,
+  and the customer sees an honest status.
+- Target: one question, under 15 seconds, then routed. It must feel like a receptionist asking "what's it about?",
+  never like a gate.
+
+**Scam victims don't wait.** On the scam path Clario: (a) says *"Please don't move any money, and hang up on anyone
+telling you to"*; (b) offers SafeBlock with Face ID; (c) asks at most two questions; (d) builds the card in the
+background; (e) Prorio warm-hands to a fraud specialist (P1) or flags "officer to verify" (P2). Protection happens in
+under a minute, before any ranking.
+
+**Misclassification safety net.** Prorio runs the account-signal checks on every card, whatever route it came from.
+If Clario filed a scam as a general question, the signals still raise it. Any customer can ask for a person at any
+time, and officers can re-rank.
+
+---
+
+## The officer dashboard
+
+- The priority list, sorted by score, with the band shown as a coloured tag **and** as text, and the reasons for each
+  ranking visible.
+- Each case shows the card, linked transactions, account signals, the language label, and Prorio's proposed solution
+  with the protocol and version it used.
+- Three choices on every case:
+
+  | Button | What happens |
+  |---|---|
+  | **Approve** | The proposal goes ahead as is. For P4, the AI then carries out the approved reply or action. |
+  | **Modify** | The officer edits the proposal, then approves it. The dashboard asks *"Suggest as a protocol update?"* |
+  | **Manual** | The officer ignores the proposal and handles the case themselves. |
+
+- **Re-rank** any case with a required reason (G5). It is logged.
+- An **audit log** on every case: who did what, when, and what changed.
+
+---
+
+## The Protocol Database and the learning loop
+
+For the demo, the Protocol Database is a small synthetic JSON file with one entry per issue type, for example:
+
+```json
+{
+  "issue_type": "CARD_LOST_STOLEN",
+  "version": "1.0",
+  "steps": ["Confirm card lock is on", "Check last 3 transactions with customer", "Offer replacement to address on file"],
+  "ai_may": ["prepare replacement request"],
+  "officer_must": ["approve replacement", "any address change"],
+  "required_checks": ["Face ID step-up"],
+  "last_changed_by": "protocol owner",
+  "change_log": []
+}
+```
+
+**Officers teach, leads approve.** An officer's Modify or Manual decision becomes a protocol *suggestion*, not a rule.
+When the same change has been suggested several times (for example 3), it is offered to a protocol owner (a team lead)
+who approves or rejects it. Every protocol has a version number, every proposal shows which version it used, and any
+change can be rolled back. In the demo, an officer modifies a proposal and it appears as "v1.1, pending approval".
+
+---
+
+## Surge mode (stretch goal)
+
+When many cards with the same symptom arrive at once (for example "app not loading" during an outage), Prorio groups
+them into one incident card for the officers, and Clario tells affected customers proactively what is happening.
+Officers handle one incident instead of hundreds of separate cards.
 
 ---
 
 ## The demo customers
 
-Five made-up customers, each set up to show a different situation.
+Five made-up customers. Data lives in `backend/data/` (`customers.json`, `transactions.json`, `cards.json`).
 
-| ID | Name | Situation | Result |
+| ID | Name | Situation | Expected under Beacon Assist |
 |---|---|---|---|
-| CUST-001 | Maria Russo | Paid $4,800 to a brand-new payee after a caller claiming to be from the bank told her to move her savings | Score **160, P1**. Jumps to the top |
-| CUST-002 | Sam Taylor | Asking when a replacement card will arrive (dispatched 12 Nov, due 19 Nov) | Answered by the assistant. **Not in the queue** |
-| CUST-003 | Priya Sharma | A $89 charge she doesn't recognise (SP DIGITALHUB SUBS) | Score **40, P3**. Suggests raising a dispute |
-| CUST-004 | Minh Nguyen | Sent $650 rent by Osko but the landlord says it never arrived. Speaks Vietnamese | Score **70, P2**. Shows "Vietnamese (translated)" |
-| CUST-005 | Alex | Replacement card due 19 Nov, with an everyday account and an eSaver account | Example customer for card-delivery questions |
+| CUST-001 | Maria Russo | Paid $4,800 to a brand-new payee after a caller claiming to be from the bank told her to move her savings | Scam path: SafeBlock offered first, **100, P1**, warm handoff to a fraud specialist |
+| CUST-002 | Sam Taylor | Asking when a replacement card will arrive (dispatched 12 Nov, due 19 Nov) | **Route A, Tier 1**: answered from his data. Only queued (**5, P4**) if he is not satisfied |
+| CUST-003 | Priya Sharma | A $89 charge she doesn't recognise (SP DIGITALHUB SUBS) | Card lock offered (G2), **55, P3**, Prorio drafts a dispute |
+| CUST-004 | Minh Nguyen | Sent $650 rent by Osko but the landlord says it never arrived. Prefers Vietnamese | **55, P3**, card shown as "Vietnamese (translated)", outcome returned in Vietnamese |
+| CUST-005 | Alex | Replacement card due 19 Nov, with an everyday account and an eSaver account | Extra example for card-delivery questions |
 
-The data lives in `backend/data/` as three plain files (`customers.json`, `transactions.json`, `cards.json`). Each
-customer has between 3 and 7 transactions so the screens look realistic.
+The demo proves three things on screen: the officer understands a case from the card in seconds with **zero
+re-asking**; a P4 case goes from question to approved answer in **one click**; a scam victim is **protected in under a
+minute**.
+
+---
+
+## Build status: what this repo runs today
+
+The final design above was agreed at the end of Day 1. The code in this repo was built for the earlier plan
+("Never Repeat Yourself") and is being moved over to it. Until that is done, **the running code does not yet match
+every part of this README**.
+
+| Part | Status |
+|---|---|
+| Backend that receives cards, scores them in code from account data, and keeps a live queue | **Built**, but uses the **earlier scoring** (issue weights up to 100, P1 at 120+, +1 per minute waiting up to +40, scam claim with no signals capped at 60). Needs updating to the 0 to 100 model, bands and gates above. |
+| Officer dashboard (Streamlit): live queue, reasons, Approve / Modify / Manual ("Do it myself"), re-rank with reason, audit log | **Built** (the Manual button is still labelled "Do it myself") |
+| Officer actions | **Built** as a fixed list of mocked actions (see [Reference](#reference-backend-endpoints)). Moving to Protocol Database proposals is to do. |
+| Saving cases and audit logs (SQLite) | **Built** |
+| Clario (customer chat in the app, routes A to D, card read-back and correction, live status) | To build |
+| Prorio protocol lookup, proposed solutions, P4 one-click AI action | To build |
+| Protocol Database (synthetic JSON) and "officers teach, leads approve" loop | To build |
+| Westpac knowledge base answers with sources | To build (a 406-page crawl of public westpac.com.au pages exists in the Retell agent) |
+| Voice | Optional, see [Voice channel](#voice-channel-optional) |
+| Cross-case payee check, surge mode | Stretch goals |
 
 ---
 
 ## Run it
 
-**You need:** Python 3 (built and tested on 3.9) and a terminal. Nothing else to install.
+**You need:** Python 3 (built and tested on 3.9) and a terminal.
 
 ### 1. Start the backend
 
@@ -214,7 +453,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### 2. Start the officer console (a second terminal)
+### 2. Start the officer dashboard (a second terminal)
 
 ```bash
 cd console
@@ -224,33 +463,31 @@ pip install -r requirements.txt
 streamlit run officer_app.py
 ```
 
-The console opens in your browser (normally at `http://localhost:8501`).
+It opens in your browser (normally at `http://localhost:8501`).
 
-### 3. Send in some cases
+### 3. Send in some cards
 
-Without the phone assistant, post cases by hand. Open a third terminal:
+Until Clario is built, post cards by hand from a third terminal. The scores you see come from the **current
+(earlier) scoring code**, not yet the Beacon Assist model above.
 
 ```bash
-# Priya: disputed charge. Score 40, P3
+# Priya: disputed $89 charge
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-003","customer_name":"Priya S.","issue_type":"DISPUTE_CHARGE","linked_transactions":"TX-7001","proposed_actions":"RAISE_DISPUTE","summary_en":"$89 charge I do not recognise"}'
 
-# Minh: missing rent, in Vietnamese. Score 70, P2
+# Minh: missing rent, in Vietnamese
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-004","customer_name":"Minh N.","issue_type":"MONEY_MISSING","language":"vi","language_label":"Vietnamese","linked_transactions":"TX-8001","summary_en":"Missing $650 rent payment","summary_customer_lang":"Mất khoản tiền thuê nhà $650"}'
 
-# Maria: scam in progress. Score 160, P1. Watch her jump to the top
+# Maria: scam in progress. Watch her jump to the top
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-001","customer_name":"Maria R.","issue_type":"SCAM_IN_PROGRESS","linked_transactions":"TX-9001","risk_signals":"CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES","proposed_actions":"ACTIVATE_SAFEBLOCK,DRAFT_PAYMENT_RECALL,DRAFT_SCAM_REPORT,BOOK_CALLBACK","proposed_explanation":"Likely bank impersonation scam. Protect the account and attempt recovery.","summary_en":"Caller says someone claiming to be from Westpac told her to move her savings.","case_reference":"WGM-0412"}'
 ```
 
-Watch the console: Priya and Minh appear, then Maria arrives and takes the top spot within two seconds. Open her
-case, read the reasons, and press **Approve**.
-
-More ready-made examples (Sam's card question, a scam claim with nothing behind it) are in
-[`backend/README.md`](backend/README.md).
+Watch the dashboard: Priya and Minh appear, then Maria arrives and takes the top spot within two seconds. Open her
+case, read the reasons, and press **Approve**. More examples are in [`backend/README.md`](backend/README.md).
 
 ### Starting over
 
-Cases are saved, so restarting the backend does **not** clear the queue. For a clean run, press **Reset demo data**
-in the console sidebar, or:
+Cases are saved, so restarting the backend does **not** clear the queue. Press **Reset demo data** in the dashboard
+sidebar, or:
 
 ```bash
 curl -X POST localhost:8000/admin/reset
@@ -258,181 +495,103 @@ curl -X POST localhost:8000/admin/reset
 
 ---
 
-## Connecting the voice assistant
+## Voice channel (optional)
 
-The agent sends the case card by calling a **custom function** at the end of the call. (Retell also has a separate
-"post-call webhook", but it sends a different, wrapped format that includes the transcript. This backend does not read
-that one.)
+The plan is **text first**. Voice reaches Clario only if the existing Retell voice agent is retuned to this design and
+a test call passes in time; otherwise the demo runs by text and voice stays on the roadmap.
 
-1. **Make the backend reachable from the internet.** Retell refuses to call `localhost`, so for a laptop demo use a
-   tunnelling tool, for example `ngrok http 8000`. Your address is then `https://<tunnel address>/webhook/retell`.
-   A free tunnel gets a new address each time you restart it, so update Retell when that happens.
-2. **Add a custom function to the agent in Retell:** method **POST**, the address above, **Payload: args only**
-   switched on (so the body is just the case card), and execution mode **Wait for completion** (so the agent gets our
-   reply).
-3. **Define its parameters** using the field names in the table below.
-4. **Tell the agent in its prompt** to call the function once, after the customer has confirmed the summary.
-5. **If you set a shared secret** (see [Optional shared secret](#optional-shared-secret)), add a header
-   `x-webhook-secret` to the function with the same value.
+The Retell agent was built for the earlier plan, so its prompt still uses the old bands, quotes invented demo wait
+times, and lets the model estimate the score. Whatever it sends, the backend **recomputes the score itself** and never
+ranks on the agent's estimate.
 
-`POST /case` accepts exactly the same body and is meant for testing by hand.
+If it is used, it sends the card by calling a **custom function** at the end of the conversation:
 
-The body is one flat set of fields, with lists written as comma-separated text. Field names must match exactly.
+1. Make the backend reachable from the internet (Retell can't call `localhost`), for example `ngrok http 8000`. The
+   address is then `https://<tunnel address>/webhook/retell`.
+2. In Retell, add a custom function: method **POST**, that address, **Payload: args only** on, execution mode **Wait
+   for completion**.
+3. Define its parameters using the field names below, and tell the agent to call it once, after the customer confirms
+   the card.
+4. If you set `NRY_WEBHOOK_SECRET`, add an `x-webhook-secret` header with the same value.
 
 | Field | Meaning |
 |---|---|
-| `customer_id`, `customer_name` | Who is calling |
+| `customer_id`, `customer_name` | Who the customer is |
 | `language`, `language_label` | For example `vi` and `Vietnamese` |
-| `issue_type` | One of the eight issues in the table above. Anything else is rejected |
-| `summary_en`, `summary_customer_lang` | Short summary in English and in the customer's own language |
+| `issue_type` | One of `SCAM_IN_PROGRESS`, `FRAUD_UNAUTHORISED`, `MONEY_MISSING`, `CARD_LOST_STOLEN`, `HARDSHIP`, `DISPUTE_CHARGE`, `CARD_DELIVERY`, `GENERAL_ENQUIRY`. Anything else is rejected |
+| `summary_en`, `summary_customer_lang` | Short summary in English and in the customer's language |
 | `linked_transactions` | For example `TX-9001,TX-9002` |
-| `risk_signals` | The two conversation signals: `CUSTOMER_REPORTS_PRESSURE`, `VULNERABILITY_CUES` |
-| `customer_confirmed`, `customer_sentiment` | Whether the customer confirmed the summary, and how they sounded |
+| `risk_signals` | Conversation cues: `CUSTOMER_REPORTS_PRESSURE`, `VULNERABILITY_CUES` |
+| `customer_confirmed`, `customer_sentiment` | Whether the customer confirmed the card, and how they sounded |
 | `proposed_explanation`, `proposed_actions` | The suggested fix, as text and a list of action names |
-| `status` | `TIER1_RESOLVED` (answered already, keep out of the queue) or `QUEUED` |
+| `status` | `TIER1_RESOLVED` (answered already, kept out of the queue) or `QUEUED` |
 | `case_reference` | An existing `WGM-####` reference. If missing, one is made starting at `WGM-0900` |
-| `priority_score`, `priority_band`, `priority_reasons`, `safeblock_activated` | Accepted but **never used for ranking**. The score and band are kept only as the assistant's estimate |
+| `priority_score`, `priority_band`, `priority_reasons`, `safeblock_activated` | Accepted but **never used for ranking** |
 
-Actions the backend doesn't recognise are dropped. See [What the officer can do](#what-the-officer-can-do) for the
-allowed list.
-
-### What the backend sends back
-
-The webhook replies with a short note for the agent to act on, not the whole case card:
-
-```json
-{"case_reference": "WGM-0412", "queued": true, "priority_band": "P1", "caller_message": "Next available specialist, with a warm transfer to the fraud team."}
-```
-
-The agent can read the reference number to the caller and pass on the `caller_message`. For a case that needed no
-officer, `queued` is `false` and the message says so. (`POST /case` still returns the full case card.)
-
-### Forgiving about messy input
-
-The agent is a language model, so it sometimes sends `null` for a field it didn't use, or a list where text was
-expected. The backend treats `null` as "not provided" and accepts a list such as `["TX-9001","TX-9002"]` in place of
-`TX-9001,TX-9002`. An unknown `issue_type` is still rejected.
-
-### Optional shared secret
-
-Anyone who learns your tunnel address could post cases. To stop that, set `NRY_WEBHOOK_SECRET` before starting the
-backend. `/webhook/retell` and `/case` then need a matching `x-webhook-secret` header and answer `401` without it.
-The queue, officer decisions and the console are not affected. With no secret set the endpoints are open, which is
-fine on a single laptop.
-
----
-
-## What the officer can do
-
-Three choices on every open case:
-
-| Button | What happens |
-|---|---|
-| **Approve** | Runs every action the assistant suggested |
-| **Modify** | The officer picks which actions to run from the allowed list, then approves that list |
-| **Do it myself** | Runs nothing. The case is marked as handled manually |
-
-A case can only be decided **once**. After a decision it leaves the queue and keeps the score it had when it was
-decided.
-
-### The allowed actions
-
-The system will only ever run actions from this fixed list, and every one is **pretend**: it records that the action
-happened and changes some demo data, nothing more.
-
-| Action | What it records |
-|---|---|
-| `ACTIVATE_SAFEBLOCK` | Switches SafeBlock on for the customer's account |
-| `BLOCK_CARD` | Marks the customer's card as blocked |
-| `RAISE_DISPUTE` | Creates a dispute reference |
-| `DRAFT_PAYMENT_RECALL` | Creates a recall **draft only**. Money is never moved. The screen says so |
-| `DRAFT_SCAM_REPORT` | Creates a scam report **draft only** |
-| `BOOK_CALLBACK` | Records a callback time |
-| `SEND_CUSTOMER_UPDATE` | Records that a message was sent |
-
-### Re-ranking
-
-If an officer knows something the numbers don't (for example the customer is elderly and alone), they can move a case
-to a different band. **A reason is required.** The change is logged and the reason is shown with the case's other
-reasons. A re-ranked case keeps its new score and stops gaining waiting-time weightage, so the officer's decision is not
-quietly undone.
-
-### The audit log
-
-Every decision, action and re-rank adds a line: **who** did it, **when**, **what**, the **before and after**, and the
-result. It is shown on the case and available from `GET /audit/{case id}`.
+Lists may be sent as comma-separated text or as a JSON list, and `null` means "not provided". The webhook replies
+with a short note for the agent, for example
+`{"case_reference": "WGM-0412", "queued": true, "priority_band": "P1", "caller_message": "..."}`.
 
 ---
 
 ## Reference: backend endpoints
 
+These are the endpoints the current code provides.
+
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/webhook/retell` | Receives a case from the voice assistant, scores it, files it and sends back a short reply |
-| POST | `/case` | Same as above, for posting test cases by hand |
+| POST | `/webhook/retell` | Receives a card from the voice agent, scores it, files it and sends back a short reply |
+| POST | `/case` | Same as above, for posting cards by hand; returns the full card |
 | GET | `/queue` | Open cases, most urgent first, with reasons and current waiting time |
-| GET | `/case/{id}` | One full case card |
+| GET | `/case/{id}` | One full card |
 | POST | `/case/{id}/decision` | `{"decision": "APPROVE" \| "MODIFY" \| "MANUAL", "actions": [...], "officer": "name"}` |
 | POST | `/case/{id}/rerank` | `{"band": "P1", "reason": "..."}` or `{"score": 150, "reason": "..."}`. Reason required |
 | GET | `/audit/{id}` | The audit log for a case |
 | POST | `/admin/reset` | Clears all cases and demo account changes (no password; demo only) |
 
-Errors: `404` unknown case, `409` the case was already decided, `422` the request is invalid (unknown issue, missing
-reason, an action not on the allowed list).
+Errors: `404` unknown case, `409` already decided, `422` invalid request (unknown issue, missing reason, an action
+not on the allowed list). Interactive docs: `http://localhost:8000/docs` while the backend runs.
 
-Interactive documentation is available while the backend runs at `http://localhost:8000/docs`.
+The current code's mocked actions are `ACTIVATE_SAFEBLOCK`, `BLOCK_CARD`, `RAISE_DISPUTE`, `DRAFT_PAYMENT_RECALL`,
+`DRAFT_SCAM_REPORT`, `BOOK_CALLBACK` and `SEND_CUSTOMER_UPDATE`. Each only records that it happened; recalls and scam
+reports are always drafts, and money is never moved.
 
 ---
 
 ## Where data is kept
 
-- **Customer data** (accounts, transactions, cards) is read from the three files in `backend/data/` every time the
-  backend starts. Treat them as a fixed starting point.
-- **Cases** are saved in a small **SQLite** database file, `backend/nry.db`. SQLite comes with Python, so there is
-  nothing to install and no database server to run. The file is created on first start and is not committed to git.
-- What survives a restart: every case, its audit log, any re-rank, plus changes the actions made to the demo accounts
-  (SafeBlock on, card blocked) and the draft reference numbers.
-- To empty it, use **Reset demo data** or `POST /admin/reset`. To keep a separate copy for testing, set `NRY_DB`.
+- **Customer data** (accounts, transactions, cards) is read from `backend/data/` on every start.
+- **Cases** are saved in a small **SQLite** file, `backend/nry.db`, created on first start and not committed to git.
+  Cases, audit logs, re-ranks and mocked account changes survive a restart.
+- To empty it, use **Reset demo data** or `POST /admin/reset`. Set `NRY_DB` to use a separate file.
 
 ---
 
 ## Settings
 
-All optional. They are environment variables.
+All optional environment variables. (The `NRY_` prefix is left over from the earlier project name.)
 
 | Variable | Default | Used by | Meaning |
 |---|---|---|---|
-| `NRY_API` | `http://localhost:8000` | Console | Where the backend is |
-| `NRY_OFFICER` | `officer` | Console | Name written in the audit log for decisions made in this console |
+| `NRY_API` | `http://localhost:8000` | Dashboard | Where the backend is |
+| `NRY_OFFICER` | `officer` | Dashboard | Name written in the audit log for decisions |
 | `NRY_DB` | `backend/nry.db` | Backend | Where the database file lives |
 | `NRY_WEBHOOK_SECRET` | none (open) | Backend | If set, `/webhook/retell` and `/case` need this value in an `x-webhook-secret` header |
-
-Example: `NRY_OFFICER="j.smith" streamlit run officer_app.py`
 
 ---
 
 ## Tests
 
-Run these from the `backend` folder with its environment switched on (`source .venv/bin/activate`):
+Run from the `backend` folder with its environment switched on. They check the **current (earlier) scoring** and will
+be updated with the move to the Beacon Assist model.
 
-| Command | What it proves |
+| Command | What it checks |
 |---|---|
-| `python priority.py` | The scoring rules: Maria 160/P1, Priya 40/P3, Minh 70/P2, a scam claim with no evidence capped at 80/P2, another customer's transaction earns no signals, waiting time stops at +40 |
-| `python test_api.py` | The whole backend through its endpoints, covering the demo scenarios below plus decisions, re-ranking and error cases |
+| `python priority.py` | The current scoring rules, the no-signals scam cap and the waiting-time cap |
+| `python test_api.py` | The whole backend through its endpoints: queue order, decisions, re-ranking and error cases |
 | `python test_db.py` | Restarts the backend for real and checks nothing was lost |
 
-The demo scenarios the tests check:
-
-| # | Scenario | Expected |
-|---|---|---|
-| 1 | Sam asks when his card arrives | Dispatched 12 Nov, due 19 Nov, answered, **not in the queue** |
-| 2 | Priya disputes a $89 charge | Score 40, P3, suggests a dispute |
-| 3 | Maria is being pressured to move her savings | Score 160, P1, first in the queue, Approve updates status and audit log |
-| 4 | Minh's $650 rent is missing, in Vietnamese | Score 70, P2, shows "Vietnamese (translated)" with the original available |
-| 5 | A scam claim with nothing in the account to back it up | Weightage capped at 60, flagged "officer to verify", cannot reach P1 on words alone |
-| 6 | Two cases waiting, one for a long time | The older case's score rises and it climbs the queue |
-
-The tests use a throwaway in-memory database, so running them never touches `nry.db`.
+The tests use a throwaway in-memory database, so they never touch `nry.db`.
 
 ---
 
@@ -441,11 +600,11 @@ The tests use a throwaway in-memory database, so running them never touches `nry
 ```
 Team-Astars/
 ├── README.md             this file
-├── BUILD.md              the original build brief
+├── BUILD.md              the original build brief (earlier plan, kept for reference)
 ├── backend/
 │   ├── main.py           the web service and its endpoints
-│   ├── priority.py       the scoring rules, waiting time, the "no gaming" cap and bands
-│   ├── store.py          keeps cases, runs officer decisions and re-ranks, restores after a restart
+│   ├── priority.py       the scoring rules (earlier model, to be updated)
+│   ├── store.py          keeps cases, runs officer decisions and re-ranks
 │   ├── models.py         the shape of incoming requests
 │   ├── mock_data.py      read-only look-ups over the demo customers and transactions
 │   ├── db.py             saving to and loading from the SQLite file
@@ -454,7 +613,7 @@ Team-Astars/
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
 └── console/
-    ├── officer_app.py    the officer console
+    ├── officer_app.py    the officer dashboard
     └── requirements.txt
 ```
 
@@ -462,34 +621,29 @@ Team-Astars/
 
 ## What is real and what is pretend
 
-| Real | Pretend (on purpose, for the demo) |
+| Real in the prototype | Pretend (on purpose) |
 |---|---|
-| Receiving cases and scoring them from account data | Customer log-in and Face ID checks |
-| The queue order, waiting time, bands and the "no gaming" rule | The phone line itself (the voice assistant is a separate project) |
-| Officer decisions, re-ranking and the audit log | SafeBlock, blocking cards, disputes, callbacks and messages: these only *record* that they happened |
-| Saving cases to a database | Payment recall: always a **draft**, money is never moved |
-| | All the banking data: it's invented |
+| Scoring cards in code from account data, with written reasons | Customer log-in and Face ID checks |
+| The queue order, bands, gates and waiting-time rule | SafeBlock, card locks, disputes, callbacks and messages: they only *record* that they happened |
+| Officer decisions, re-ranking and the audit log | Payment recall and scam reports: always **drafts**; money is never moved |
+| Saving cases to a database | All the banking data: it's invented |
+
+Guardrails throughout: the customer is told they are talking to an AI; answers come only from the customer's data or
+the Westpac knowledge base; the AI never moves money; "talk to a person" is always available; every action is logged.
 
 ---
 
 ## Known limits and future work
 
-- **No log-in.** Anyone who can reach the backend can read the queue and make decisions. The reset endpoint has no
-  password. Only case intake can be protected (with the optional shared secret). Fine on one laptop, not fine on a
-  shared network.
-- **The queue refreshes by asking every 2 seconds**, not by being pushed. It's simple and reliable, but a very large
-  queue would need something better.
-- **One machine, one process.** The database is a single file with a single connection. That suits a demo; a real
-  deployment would need a proper database server.
-- **Demo dates.** The sample transactions are dated 10 to 15 November 2026. Look-ups of "recent transactions" use the
-  real clock, so they come back empty once those dates are more than a few weeks old. Scoring is unaffected because it
-  compares a payee's age to the transfer date, not to today.
-- **Not built:** customer-facing status and confirmation pages, a chat channel, hiding personal details from
-  summaries, and protection against people trying to trick the voice assistant. They are listed as future work.
-- **Wide-open access from any website** is switched on for the backend (CORS) to keep the demo simple. Restrict it to
-  the console's address before using it anywhere else.
-- The voice assistant's transfer number used in the Retell setup (`+61400000000`) is a placeholder and always fails.
-  To demo a live hand-off, swap in a teammate's mobile number. It isn't needed for the console demo.
+- **No log-in on the backend or dashboard.** Anyone who can reach the backend can read the queue and make decisions,
+  and the reset endpoint has no password. Fine on one laptop, not on a shared network. CORS is also wide open for the
+  demo.
+- **The queue refreshes by polling every 2 seconds**, not by push.
+- **One machine, one process.** SQLite with a single connection suits a demo, not production.
+- **Demo dates.** Sample transactions are dated 10 to 15 November 2026, so "recent transactions" look-ups come back
+  empty once those dates are old. Scoring is unaffected.
+- **Not yet built:** see [Build status](#build-status-what-this-repo-runs-today).
+- The Retell agent's transfer number (`+61400000000`) is a placeholder and always fails.
 
 ---
 

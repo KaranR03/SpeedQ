@@ -1,3 +1,7 @@
+> **Superseded.** This is the original build brief for the earlier "Never Repeat Yourself" plan. The final plan is
+> **Beacon Assist** (agents Clario and Prorio); see [README.md](README.md). Where the two disagree, the README wins.
+> This file is kept for reference only.
+
 # Never Repeat Yourself: Backend and Officer Console Build Spec
 
 **For:** a Claude Code session building workstreams D and E for the Westpac hackathon.
