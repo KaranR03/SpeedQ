@@ -1,7 +1,7 @@
 """Pydantic models: the Retell webhook payload (flat, field names match the voice agent)."""
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 ISSUE_TYPES = ("SCAM_IN_PROGRESS", "FRAUD_UNAUTHORISED", "MONEY_MISSING", "HARDSHIP",
                "DISPUTE_CHARGE", "CARD_LOST_STOLEN", "CARD_DELIVERY", "GENERAL_ENQUIRY")
@@ -28,6 +28,20 @@ class Rerank(BaseModel):
 
 
 class RetellPayload(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _tidy(cls, data):
+        """The agent is a language model: it may send null for fields it did not use, or a JSON
+        list where we expect comma text. Treat null as "not provided" and join lists."""
+        if not isinstance(data, dict):
+            return data
+        out = {}
+        for k, v in data.items():
+            if v is None:
+                continue
+            out[k] = ",".join(str(x) for x in v) if isinstance(v, list) else v
+        return out
+
     customer_id: str
     issue_type: str
     customer_name: str = ""

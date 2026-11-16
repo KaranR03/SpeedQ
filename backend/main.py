@@ -1,7 +1,11 @@
 """FastAPI app. Run: uvicorn main:app --reload --port 8000"""
-from fastapi import FastAPI, HTTPException
+import hmac
+import os
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+import priority
 import store
 from models import Decision, Rerank, RetellPayload
 
@@ -17,12 +21,24 @@ def _ingest(payload: RetellPayload):
         raise HTTPException(422, str(e))
 
 
-@app.post("/webhook/retell")
+def _check_secret(x_webhook_secret: str = Header(default="")):
+    """Intake only. If NRY_WEBHOOK_SECRET is set, callers must send it as x-webhook-secret."""
+    secret = os.environ.get("NRY_WEBHOOK_SECRET", "")
+    if secret and not hmac.compare_digest(x_webhook_secret.encode(), secret.encode()):
+        raise HTTPException(401, "missing or wrong x-webhook-secret")
+
+
+@app.post("/webhook/retell", dependencies=[Depends(_check_secret)])
 def webhook_retell(payload: RetellPayload):
-    return _ingest(payload)
+    case = _ingest(payload)  # reply is short: the agent reads it aloud, it does not need the whole card
+    queued = case["status"] != "TIER1_RESOLVED"
+    band = case["priority"]["band"]
+    return {"case_reference": case["case_id"], "queued": queued,
+            "priority_band": band if queued else None,
+            "caller_message": priority.BAND_MESSAGE[band] if queued else "Resolved, no officer needed."}
 
 
-@app.post("/case")
+@app.post("/case", dependencies=[Depends(_check_secret)])
 def post_case(payload: RetellPayload):  # same body as the webhook, for hand-posted test cases
     return _ingest(payload)
 

@@ -37,6 +37,14 @@ def band_for(score):
     return "P1" if score >= 120 else "P2" if score >= 70 else "P3" if score >= 30 else "P4"
 
 
+BAND_MESSAGE = {  # what the voice agent should tell the caller
+    "P1": "Next available specialist, with a warm transfer to the fraud team.",
+    "P2": "About 5 minutes.",
+    "P3": "About 20 minutes. Give the reference number and offer a callback.",
+    "P4": "A callback within one business day.",
+}
+
+
 def account_signals(customer_id, linked_transactions):
     """Derive account signals from the customer's own linked transactions + account state."""
     cust = md.get_customer(customer_id)
