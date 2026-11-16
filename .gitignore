@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 *.db
 .DS_Store
+
+# secrets: API keys live in .env on the demo laptop, never in git
+.env
+.env.*

@@ -4,20 +4,44 @@ Run: uvicorn main:app --reload --port 8000
 """
 import hmac
 import os
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 import mock_data as md
 import store
 from models import Decision, OfficerNote, OwnerDecision, Rerank, RetellPayload
-from prorio import learning, protocols
+from prorio import evidence, learning, protocols
 from prorio.propose import ACTIONS, ACTION_TEXT
-from prorio.score import BAND_LABEL, BAND_MESSAGE, HANDOFF
+from prorio.score import BAND_LABEL, BAND_MESSAGE, FIRST_SEEN, HANDOFF
 
 app = FastAPI(title="Beacon Assist backend (Prorio)")
-# ponytail: wide-open CORS for the demo, restrict to the dashboard's origin if this leaves localhost
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# The web pages are served from this same origin, and Retell and the Streamlit console call server to server, so no
+# browser needs cross-origin access. Add origins to NRY_CORS_ORIGINS (comma-separated) only if a page lives elsewhere.
+_origins = [o.strip() for o in os.environ.get("NRY_CORS_ORIGINS", "").split(",") if o.strip()]
+if _origins:
+    app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["GET", "POST"],
+                       allow_headers=["content-type", "x-webhook-secret"])
+
+WEB = Path(__file__).resolve().parent.parent / "web"
+# Strict browser rules for every response: scripts, styles and data only from this server, no inline code, no
+# framing by other sites. Pages render customer text with textContent only, so card text can never run as code.
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "
+       "font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers["Content-Security-Policy"] = CSP
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["X-Frame-Options"] = "SAMEORIGIN"
+    resp.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return resp
 
 
 def _errors(fn, *args):
@@ -173,6 +197,7 @@ def post_reject(sid: str, body: OwnerDecision):
 def get_meta():
     """Fixed lists the dashboard needs, so it never hard-codes them."""
     return {"actions": [{"action": a, "label": ACTION_TEXT[a]} for a in ACTIONS], "bands": BAND_LABEL,
+            "signal_labels": evidence.SIGNALS, "first_seen_label": FIRST_SEEN,
             "issue_types": list(protocols.ISSUE_TYPES), "demo_now": md.demo_now().strftime("%Y-%m-%dT%H:%M:%SZ"),
             "suggestion_threshold": learning.THRESHOLD}
 
@@ -181,3 +206,41 @@ def get_meta():
 def admin_reset():  # demo rehearsal only: wipes cases, mock account changes and the learning loop (no auth)
     store.reset()
     return {"ok": True}
+
+
+# ---- Clario's read-only look-ups (the signed-in customer's own data) ---------------------------------------------
+
+@app.get("/clario/{customer_id}/lookup")
+def clario_lookup(customer_id: str):
+    """What Clario may read for the signed-in customer: name, card delivery, account status, recent transactions.
+    Read-only, one customer, account numbers masked. In the demo the "signed-in" customer is picked by the page."""
+    cust = md.get_customer(customer_id)
+    if not cust:
+        raise HTTPException(404, "unknown customer")
+    txs = md.get_recent_transactions(customer_id, days=30, now=md.demo_now())
+    return {"customer_id": customer_id, "first_name": cust["name"].split()[0], "language": cust["language"],
+            "accounts": [{"type": a["type"], "mask": a["mask"]} for a in cust["accounts"]],
+            "safeblock": cust.get("safeblock", False), "card_delivery": md.get_card_delivery_status(customer_id),
+            "payees": cust.get("payees", []), "recent_transactions": txs[:10]}
+
+
+# ---- Web pages: officer dashboard, customer app, side-by-side demo -------------------------------------------------
+
+if WEB.is_dir():
+    app.mount("/static", StaticFiles(directory=WEB / "static"), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def home():
+        return RedirectResponse("/demo")
+
+    @app.get("/officer", include_in_schema=False)
+    def page_officer():
+        return FileResponse(WEB / "officer.html")
+
+    @app.get("/customer", include_in_schema=False)
+    def page_customer():
+        return FileResponse(WEB / "customer.html")
+
+    @app.get("/demo", include_in_schema=False)
+    def page_demo():
+        return FileResponse(WEB / "demo.html")

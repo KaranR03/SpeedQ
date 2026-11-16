@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon Assist · Officer</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script type="module" src="/static/officer.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>Beacon Assist</b><span class="muted small">Customer Service Officer</span></div>
+    <nav class="tabs">
+      <button class="tab on" data-tab="queue">Priority list</button>
+      <button class="tab" data-tab="protocols">Protocols <span class="chip info count hidden" id="sugCount"></span></button>
+    </nav>
+    <div class="spacer"></div>
+    <div class="counts" id="counts"></div>
+    <label class="who">Officer <input id="officer" maxlength="40" autocomplete="off"></label>
+    <span class="live" id="live"><i></i>Live</span>
+    <button class="btn small danger" id="reset" title="Clears all cases and demo account changes">Reset demo</button>
+  </header>
+
+  <main id="view-queue" class="layout">
+    <section class="queue" aria-label="Priority list">
+      <div class="queue-head"><h2>Priority list</h2><span class="muted small">most urgent first · updates every 2 s</span></div>
+      <div class="rows" id="rows"></div>
+    </section>
+    <section class="case" id="case" aria-live="polite">
+      <div class="empty">Select a case to see why it ranks where it does and what Prorio proposes.</div>
+    </section>
+  </main>
+
+  <main id="view-protocols" class="wrap hidden" aria-label="Protocol Database"></main>
+</body>
+</html>

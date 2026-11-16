@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon Assist · Customer</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script type="module" src="/static/customer.js"></script>
+</head>
+<body class="cust">
+  <div class="picker" id="picker"></div>
+  <div class="phone">
+    <div class="ph-top">
+      <div class="row1"><b>Help</b><span class="ai" title="You are talking to an AI">AI</span>
+        <span class="muted small">Clario, an AI assistant</span>
+        <button class="person" id="person">Talk to a person</button></div>
+      <div class="ph-tabs"><button class="on" data-v="chat">Chat</button><button data-v="card" id="cardTab">My card</button></div>
+    </div>
+    <div class="chat" id="chat" aria-live="polite"></div>
+    <div class="quick" id="quick"></div>
+    <div class="cardview hidden" id="cardview"></div>
+    <div class="sim" id="sim">Demo customer · synthetic data · no real money moves</div>
+  </div>
+</body>
+</html>
