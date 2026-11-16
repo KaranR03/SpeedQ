@@ -6,6 +6,7 @@ os.environ["NRY_DB"] = ":memory:"  # before the app imports db: tests never touc
 
 from fastapi.testclient import TestClient
 
+import priority
 import store
 from main import app
 
@@ -27,13 +28,17 @@ BARE = dict(customer_id="CUST-002", issue_type="SCAM_IN_PROGRESS", risk_signals=
 post = lambda body, url="/case": c.post(url, json=body).json()
 
 sam = post(SAM, "/webhook/retell")
-assert sam["status"] == "TIER1_RESOLVED" and c.get("/queue").json() == []
+assert sam["queued"] is False and "no officer" in sam["caller_message"] and c.get("/queue").json() == []
+assert store.CASES[sam["case_reference"]]["status"] == "TIER1_RESOLVED"
 priya, minh = post(PRIYA), post(MINH)
 assert (priya["priority"]["score"], priya["priority"]["band"]) == (40, "P3")
 assert (minh["priority"]["score"], minh["priority"]["band"]) == (70, "P2")
 assert [x["customer_id"] for x in c.get("/queue").json()] == ["CUST-004", "CUST-003"]
 
-maria = post(MARIA, "/webhook/retell")
+reply = post(MARIA, "/webhook/retell")
+assert reply == {"case_reference": "WGM-0412", "queued": True, "priority_band": "P1",
+                 "caller_message": priority.BAND_MESSAGE["P1"]}, reply
+maria = c.get("/case/WGM-0412").json()
 assert maria["case_id"] == "WGM-0412" and maria["priority"]["score"] == 160, maria["priority"]
 assert maria["retell_estimate"]["score"] == 999
 assert [a["action"] for a in maria["proposed_solution"]["actions"]] == [
@@ -99,3 +104,23 @@ last = c.get("/audit/" + old["case_id"]).json()[-1]
 assert last["action"] == "RERANK" and last["before"]["score"] == 45 and last["after"]["score"] == 120
 assert rr(low["case_id"], {"score": 200, "reason": "manual escalation"}).json()["priority"]["score"] == 200
 print("Checkpoint 5 OK")
+
+# Hardening: messy agent input, and the optional shared secret on intake
+messy = dict(customer_id="CUST-003", issue_type="DISPUTE_CHARGE", language_label=None, summary_customer_lang=None,
+             customer_confirmed=None, risk_signals=None, priority_score=None, status=None,
+             linked_transactions=["TX-7001"], proposed_actions=["RAISE_DISPUTE"])
+r = c.post("/webhook/retell", json=messy)
+assert r.status_code == 200 and r.json()["priority_band"] == "P3", r.text
+got = store.CASES[r.json()["case_reference"]]
+assert got["priority"]["score"] == 40 and got["linked_transactions"] == ["TX-7001"] and got["status"] == "QUEUED"
+os.environ["NRY_WEBHOOK_SECRET"] = "s3cret"
+try:
+    for url in ("/webhook/retell", "/case"):
+        assert c.post(url, json=messy).status_code == 401
+        assert c.post(url, json=messy, headers={"x-webhook-secret": "wrong"}).status_code == 401
+        assert c.post(url, json=messy, headers={"x-webhook-secret": "s3cret"}).status_code == 200
+    assert c.get("/queue").status_code == 200  # the console is not locked out
+finally:
+    del os.environ["NRY_WEBHOOK_SECRET"]
+assert c.post("/case", json=messy).status_code == 200  # no secret set: open again
+print("Hardening OK")

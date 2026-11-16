@@ -77,15 +77,21 @@ the reasons are visible, and the officer clicks Approve.
 
 ## How urgency is worked out
 
-Every case gets a **score**. A higher score means more urgent.
+Every case gets a **score**. A higher score means more urgent, and the score decides where the case sits in the queue.
+
+Each case is about **one issue**, so the score starts from that issue's **weightage**. Some issues simply matter more
+than others: a scam in progress is weighted far higher than a card delivery question. Most cases are ranked on their
+issue alone. A case only gains extra weightage when a warning sign actually applies to it, or as it waits.
 
 ```
-score = issue weight  +  signals  +  waiting time
+score = issue weightage  +  warning signs (only if they apply)  +  waiting time
 ```
 
-### 1. Issue weight (what kind of problem it is)
+### 1. Issue weightage (what kind of problem it is)
 
-| Issue | Points |
+Every case has exactly one of these, and it is the starting point of the score.
+
+| Issue | Weightage |
 |---|---:|
 | Scam in progress | 100 |
 | Unauthorised fraud | 80 |
@@ -96,9 +102,11 @@ score = issue weight  +  signals  +  waiting time
 | Card delivery | 10 |
 | General enquiry | 10 |
 
-### 2. Signals (extra warning signs)
+### 2. Warning signs (extra weightage, only when they apply)
 
-| Signal | Points | Where it comes from |
+A case can have none, one or several of these. Each one that applies adds its weightage on top of the issue.
+
+| Warning sign | Weightage | Where it comes from |
 |---|---:|---|
 | New payee added within 24 hours of the transfer | +15 | **Checked in the account data** |
 | Transfer over $1,000 | +15 | **Checked in the account data** |
@@ -113,13 +121,13 @@ conversation, so they are taken from the voice assistant.
 
 ### 3. Waiting time
 
-**+1 point for every minute the case has waited, up to +40.** This is the fairness rule: a less urgent case that has
+**+1 added to the score for every minute the case has waited, up to +40.** This is the fairness rule: a less urgent case that has
 been waiting a long time slowly climbs the queue and doesn't get stuck behind a steady stream of bigger cases. The
 score is recalculated every time the queue is read, so the waiting time is always current.
 
 ### The "no gaming" rule
 
-If a call is labelled **scam in progress** but the account shows **no warning signs at all**, the issue weight is
+If a call is labelled **scam in progress** but the account shows **no warning signs at all**, the issue weightage is
 **capped at 60** instead of 100, and the case is flagged *"Customer reports scam, no account signals yet: officer to
 verify"*. Words alone cannot put a case at the top of the queue. The same goes for the voice assistant's own score:
 it is stored for reference as the "voice agent estimate" but **never used for ranking**.
@@ -135,9 +143,12 @@ it is stored for reference as the "voice agent estimate" but **never used for ra
 
 ### Worked example: Maria
 
-| Reason | Points |
+Maria's issue is a scam in progress (weightage 100), and several warning signs apply to her. Priya's disputed charge,
+by contrast, has no warning signs, so her score is just the issue's weightage of 40.
+
+| Reason | Weightage |
 |---|---:|
-| Scam in progress | +100 |
+| Scam in progress (the issue) | +100 |
 | New payee added in the 24 hours before the transfer | +15 |
 | Transfer over $1,000 ($4,800) | +15 |
 | Customer says a caller is pressuring her | +20 |
@@ -145,7 +156,7 @@ it is stored for reference as the "voice agent estimate" but **never used for ra
 | Waiting 0 minutes | +0 |
 | **Total** | **160 → P1** |
 
-Every reason is shown to the officer in plain words, each ending in its points, exactly like the table above.
+Every reason is shown to the officer in plain words, each ending in its weightage, exactly like the table above.
 
 ---
 
@@ -249,15 +260,22 @@ curl -X POST localhost:8000/admin/reset
 
 ## Connecting the voice assistant
 
-Point the Retell agent's post-call webhook at:
+The agent sends the case card by calling a **custom function** at the end of the call. (Retell also has a separate
+"post-call webhook", but it sends a different, wrapped format that includes the transcript. This backend does not read
+that one.)
 
-```
-POST http://<your backend address>:8000/webhook/retell
-```
+1. **Make the backend reachable from the internet.** Retell refuses to call `localhost`, so for a laptop demo use a
+   tunnelling tool, for example `ngrok http 8000`. Your address is then `https://<tunnel address>/webhook/retell`.
+   A free tunnel gets a new address each time you restart it, so update Retell when that happens.
+2. **Add a custom function to the agent in Retell:** method **POST**, the address above, **Payload: args only**
+   switched on (so the body is just the case card), and execution mode **Wait for completion** (so the agent gets our
+   reply).
+3. **Define its parameters** using the field names in the table below.
+4. **Tell the agent in its prompt** to call the function once, after the customer has confirmed the summary.
+5. **If you set a shared secret** (see [Optional shared secret](#optional-shared-secret)), add a header
+   `x-webhook-secret` to the function with the same value.
 
-Retell needs to be able to reach that address over the internet, so for a laptop demo use a tunnelling tool or run the
-backend on a machine with a public address. `POST /case` accepts exactly the same body and is meant for testing by
-hand.
+`POST /case` accepts exactly the same body and is meant for testing by hand.
 
 The body is one flat set of fields, with lists written as comma-separated text. Field names must match exactly.
 
@@ -277,6 +295,30 @@ The body is one flat set of fields, with lists written as comma-separated text. 
 
 Actions the backend doesn't recognise are dropped. See [What the officer can do](#what-the-officer-can-do) for the
 allowed list.
+
+### What the backend sends back
+
+The webhook replies with a short note for the agent to act on, not the whole case card:
+
+```json
+{"case_reference": "WGM-0412", "queued": true, "priority_band": "P1", "caller_message": "Next available specialist, with a warm transfer to the fraud team."}
+```
+
+The agent can read the reference number to the caller and pass on the `caller_message`. For a case that needed no
+officer, `queued` is `false` and the message says so. (`POST /case` still returns the full case card.)
+
+### Forgiving about messy input
+
+The agent is a language model, so it sometimes sends `null` for a field it didn't use, or a list where text was
+expected. The backend treats `null` as "not provided" and accepts a list such as `["TX-9001","TX-9002"]` in place of
+`TX-9001,TX-9002`. An unknown `issue_type` is still rejected.
+
+### Optional shared secret
+
+Anyone who learns your tunnel address could post cases. To stop that, set `NRY_WEBHOOK_SECRET` before starting the
+backend. `/webhook/retell` and `/case` then need a matching `x-webhook-secret` header and answer `401` without it.
+The queue, officer decisions and the console are not affected. With no secret set the endpoints are open, which is
+fine on a single laptop.
 
 ---
 
@@ -312,7 +354,7 @@ happened and changes some demo data, nothing more.
 
 If an officer knows something the numbers don't (for example the customer is elderly and alone), they can move a case
 to a different band. **A reason is required.** The change is logged and the reason is shown with the case's other
-reasons. A re-ranked case keeps its new score and stops gaining waiting-time points, so the officer's decision is not
+reasons. A re-ranked case keeps its new score and stops gaining waiting-time weightage, so the officer's decision is not
 quietly undone.
 
 ### The audit log
@@ -326,7 +368,7 @@ result. It is shown on the case and available from `GET /audit/{case id}`.
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/webhook/retell` | Receives a case from the voice assistant, scores it and files it |
+| POST | `/webhook/retell` | Receives a case from the voice assistant, scores it, files it and sends back a short reply |
 | POST | `/case` | Same as above, for posting test cases by hand |
 | GET | `/queue` | Open cases, most urgent first, with reasons and current waiting time |
 | GET | `/case/{id}` | One full case card |
@@ -363,6 +405,7 @@ All optional. They are environment variables.
 | `NRY_API` | `http://localhost:8000` | Console | Where the backend is |
 | `NRY_OFFICER` | `officer` | Console | Name written in the audit log for decisions made in this console |
 | `NRY_DB` | `backend/nry.db` | Backend | Where the database file lives |
+| `NRY_WEBHOOK_SECRET` | none (open) | Backend | If set, `/webhook/retell` and `/case` need this value in an `x-webhook-secret` header |
 
 Example: `NRY_OFFICER="j.smith" streamlit run officer_app.py`
 
@@ -386,7 +429,7 @@ The demo scenarios the tests check:
 | 2 | Priya disputes a $89 charge | Score 40, P3, suggests a dispute |
 | 3 | Maria is being pressured to move her savings | Score 160, P1, first in the queue, Approve updates status and audit log |
 | 4 | Minh's $650 rent is missing, in Vietnamese | Score 70, P2, shows "Vietnamese (translated)" with the original available |
-| 5 | A scam claim with nothing in the account to back it up | Weight capped at 60, flagged "officer to verify", cannot reach P1 on words alone |
+| 5 | A scam claim with nothing in the account to back it up | Weightage capped at 60, flagged "officer to verify", cannot reach P1 on words alone |
 | 6 | Two cases waiting, one for a long time | The older case's score rises and it climbs the queue |
 
 The tests use a throwaway in-memory database, so running them never touches `nry.db`.
@@ -432,7 +475,8 @@ Team-Astars/
 ## Known limits and future work
 
 - **No log-in.** Anyone who can reach the backend can read the queue and make decisions. The reset endpoint has no
-  password. Fine on one laptop, not fine on a shared network.
+  password. Only case intake can be protected (with the optional shared secret). Fine on one laptop, not fine on a
+  shared network.
 - **The queue refreshes by asking every 2 seconds**, not by being pushed. It's simple and reliable, but a very large
   queue would need something better.
 - **One machine, one process.** The database is a single file with a single connection. That suits a demo; a real
