@@ -168,8 +168,15 @@ Every rule in Beacon Assist rests on these six.
 - **Low priority:** information or a routine service where nothing is at risk and nothing about security changes (a
   delivery date, a statement copy, a fee explanation, branch hours).
 - **The trap: "looks simple, isn't safe."** Changing an address, phone number or email, adding a device, raising a
-  limit or removing a block look like admin, but they are the first steps in an account takeover. These are always
-  handled by an officer, at P3 or higher. ("Finding the address" is a safe read; "changing the address" is not.)
+  limit, removing a block or giving another person authority over an account look like admin, but they are the first
+  steps in an account takeover or financial abuse. These are always handled by an officer, at P3 or higher. ("Finding
+  the address" is a safe read; "changing the address" is not.)
+- **Safety cases.** Family violence, financial abuse and elder financial abuse can look like a hardship or admin
+  request, but someone may be controlling the customer's money. They never sit below P2.
+- **Asking is safe.** "Is this call or message really from Westpac?" is ranked as a general question, because checking
+  is the behaviour we want to encourage and nothing is at risk yet. The moment the customer says they shared codes,
+  installed something, moved money, or that the caller is still on the line telling them what to do, Clario switches
+  to the scam path.
 
 ### The score (0 to 100)
 
@@ -182,18 +189,22 @@ Score = Harm (0-60) + Time to harm (0-20) + Verified account signals (0-20) + Ca
 extracts cues; a backend function adds the points. The same facts always give the same score, and every point has a
 written reason.
 
-| Harm (what is at stake) | Points |
-|---|---:|
-| Scam in progress (told to move money, remote access, someone on the line) | 60 |
-| Unauthorised transaction (money taken without consent) | 45 |
-| Locked out of own money, or suspected account takeover | 40 |
-| Card lost or stolen | 35 |
-| Payment missing (sent but not received, mistaken payment) | 35 |
-| Financial hardship | 30 |
-| Disputed charge (known merchant, wrong amount or service) | 20 |
-| Complaint about service | 15 |
-| Service request (delivery, statement, address lookup) | 5 |
-| General question | 0 |
+| Harm (what is at stake) | Code in `protocols.json` | Points |
+|---|---|---:|
+| Scam in progress (told to move money, remote access, someone on the line) | `SCAM_IN_PROGRESS` | 60 |
+| Unauthorised transaction (money taken without consent) | `UNAUTHORISED` | 45 |
+| Locked out of own money, or suspected account takeover | `ACCOUNT_ACCESS` | 40 |
+| Card lost or stolen | `CARD_LOST` | 35 |
+| Payment missing (sent but not received, mistaken payment) | `PAYMENT_MISSING` | 35 |
+| Financial hardship, or a safety case | `HARDSHIP` | 30 |
+| Disputed charge (known merchant, wrong amount or service) | `DISPUTE` | 20 |
+| Complaint about service | `COMPLAINT` | 15 |
+| Service request (delivery, statement, address lookup) | `SERVICE` | 5 |
+| General question | `GENERAL` | 0 |
+
+The same codes and points are stored once in `backend/data/protocols.json` (`_about.harm_categories`), and every
+protocol names the code it scores under. The scoring code should read the points from there. If a number changes,
+change it there and in this table.
 
 | Time to harm | Points |
 |---|---:|
@@ -237,10 +248,11 @@ customer was not satisfied or a routine action needs sign-off.
 |---|---|
 | **G1 Words alone can't reach P1** | Without at least one verified account signal, the score is capped at 79 (P2) and flagged *"Customer reports scam, no account signals yet: officer to verify"*. Typing "scam" does not jump the queue. |
 | **G2 Protect first** | For scams, unauthorised transactions and lost cards, Clario offers SafeBlock or a card lock **before** the case is queued (the customer's choice, with Face ID). |
-| **G3 Security floor** | Any request that changes identity, contact details or devices, raises a limit or removes a lock is officer-only and never below 40 (P3). |
+| **G3 Security floor** | Any request that changes identity, contact details or devices, raises a limit, removes a lock or gives another person authority or access is officer-only and never below 40 (P3). |
 | **G4 Ageing ceiling** | Waiting can lift a case by at most one band, so routine cases can't overtake real emergencies, but nothing waits forever. |
 | **G5 Officer override** | An officer can re-rank any case with a reason; it is logged and reviewed. |
 | **G6 One problem, one card** | Repeat contacts about the same issue update the existing card instead of creating new ones. |
+| **G7 Safety floor** | Family violence, financial abuse and elder financial abuse are never below 60 (P2), and go to a specialist team. Clario asks only what's needed and sends nothing that could alert someone else. Words alone can reach P2 here, never P1 (G1 still applies): a false claim costs an officer a few minutes, but a missed one can cost someone their safety. |
 
 ### Worked examples (synthetic customers)
 
@@ -255,6 +267,10 @@ customer was not satisfied or a routine action needs sign-off.
 | Lost job, can't make the home loan payment | Hardship 30 + care 10 | **40, P3**, officer-led (hardship is a regulated assessment) |
 | **Sam:** "When is my new card arriving?", not satisfied after Clario's answer | Service 5 | **5, P4**, AI prepares, officer approves |
 | "Please change my address" | Service 5, raised by G3 | **40, P3**, officer-only |
+| "I want my daughter to be able to help with my banking" | Service 5, raised by G3 | **40, P3**, officer-only; Clario first checks the choice is the customer's own |
+| "My son keeps taking money from my account and I'm scared to say no" | Hardship 30 + care 10 = 40, raised by G7 | **60, P2**, specialist team |
+| "Is this text really from Westpac?" (nothing shared, nothing moved) | General 0 | **0, P4**, Clario answers at Tier 2 and checks for a genuine bank contact on file |
+| Same question, but "they're still on the phone and want my code" | Switches to scam in progress: Scam 60 + happening now 20 = 80, capped by G1 unless account signals back it | **79, P2** (or P1 with signals), SafeBlock offered first |
 
 ### Why this holds up
 
@@ -370,25 +386,70 @@ time, and officers can re-rank.
 
 ## The Protocol Database and the learning loop
 
-For the demo, the Protocol Database is a small synthetic JSON file with one entry per issue type, for example:
+For the demo, the Protocol Database is [`backend/data/protocols.json`](backend/data/protocols.json): **31 protocols**,
+one per issue type, written in our own words from public sources. Each protocol lists its sources, and steps marked
+`team_design` are our own design, not a published rule. It is **not** Westpac's internal procedure.
+[`PROTOCOLS_SOURCES.md`](backend/data/PROTOCOLS_SOURCES.md) explains how it was built and the copyright rules for
+changing it.
+
+One entry, shortened (the `clario_can_answer` list is cut to one item):
 
 ```json
 {
-  "issue_type": "CARD_LOST_STOLEN",
-  "version": "1.0",
-  "steps": ["Confirm card lock is on", "Check last 3 transactions with customer", "Offer replacement to address on file"],
-  "ai_may": ["prepare replacement request"],
-  "officer_must": ["approve replacement", "any address change"],
-  "required_checks": ["Face ID step-up"],
-  "last_changed_by": "protocol owner",
-  "change_log": []
+  "issue_type": "CARD_DELIVERY",
+  "title": "When will my card arrive?",
+  "version": "2.0", "harm_category": "SERVICE", "min_band": null,
+  "clario_can_answer": ["Answer from card tracking: dispatched, carrier, status, expected date."],
+  "protect_first": null,
+  "steps": [
+    {"who": "AI (Clario)", "step": "Answer from tracking data", "source": "team_design"},
+    {"who": "AI (Prorio)", "step": "If past the expected date, prepare a replacement to the address on file", "source": "team_design"},
+    {"who": "officer", "step": "One-click approve (P4)", "source": "team_design"}
+  ],
+  "ai_may": ["prepare ORDER_REPLACEMENT_CARD", "SEND_CUSTOMER_UPDATE"],
+  "officer_must": ["approve the replacement"],
+  "required_checks": ["address changes go to DETAILS_CHANGE"],
+  "customer_message": "Your card was sent on {dispatched} and should arrive by {expected}. You can use your digital card in the app until then.",
+  "timeframes": []
 }
 ```
 
+| Field | Meaning |
+|---|---|
+| `harm_category` | Which row of the harm table the case scores under |
+| `min_band` | A gate: the lowest band the case may sit in (`null` means the score decides) |
+| `clario_can_answer` | What Clario may tell the customer straight away (Tier 1 or 2) |
+| `protect_first` | The protective action offered before queuing (G2), always the customer's choice |
+| `steps` | Who does what, in order: customer, AI (Clario), AI (Prorio) or officer, each with a source |
+| `ai_may` / `officer_must` | What the AI may prepare or do, and what only a person may decide |
+| `required_checks`, `customer_message`, `timeframes`, `sources` | Checks before acting, the reply template, sourced timeframes, and links |
+| `change_log` | What changed in each version and why |
+
+**All 31 issue types, by harm category** (a gate is shown where the protocol sets a minimum band):
+
+| Harm code | Points | Issue types |
+|---|---:|---|
+| `SCAM_IN_PROGRESS` | 60 | `SCAM_IN_PROGRESS` |
+| `UNAUTHORISED` | 45 | `SCAM_ALREADY_PAID`, `FRAUD_UNAUTHORISED`, `UNAUTHORISED_ONLINE_BANKING` |
+| `ACCOUNT_ACCESS` | 40 | `IDENTITY_THEFT` (G3, P3+), `ACCOUNT_ACCESS` (G3, P3+), `ACCOUNT_RESTRICTED_ID_CHECK` (G3, P3+) |
+| `CARD_LOST` | 35 | `CARD_LOST_STOLEN` |
+| `PAYMENT_MISSING` | 35 | `MONEY_MISSING`, `BPAY_MISTAKE` |
+| `HARDSHIP` | 30 | `HARDSHIP`, `FAMILY_VIOLENCE_FINANCIAL_ABUSE` (G7, P2+), `ELDER_FINANCIAL_ABUSE` (G7, P2+), `BEREAVEMENT`, `GAMBLING_HARM` |
+| `DISPUTE` | 20 | `DISPUTE_CHARGE` |
+| `COMPLAINT` | 15 | `COMPLAINT` |
+| `SERVICE` | 5 | `LOGIN_HELP`, `DETAILS_CHANGE` (G3, P3+), `PAYMENT_LIMIT_CHANGE` (G3, P3+), `CARD_DECLINED`, `CARD_DELIVERY`, `CARD_ACTIVATION`, `PENDING_TRANSACTION`, `DIRECT_DEBIT_STOP`, `PAYID_ISSUE`, `TRUSTED_PERSON_ACCESS` (G3, P3+), `ACCOUNT_CLOSURE`, `OUTAGE_INCIDENT` |
+| `GENERAL` | 0 | `VERIFY_CONTACT`, `GENERAL_ENQUIRY` |
+
+Some protocols switch a case to another one when the facts change: `VERIFY_CONTACT` becomes `SCAM_IN_PROGRESS` as
+soon as anything is at risk, `PENDING_TRANSACTION` is routed to a fraud, dispute or scam protocol, and
+`TRUSTED_PERSON_ACCESS` becomes `ELDER_FINANCIAL_ABUSE` if the customer is being pressured.
+
 **Officers teach, leads approve.** An officer's Modify or Manual decision becomes a protocol *suggestion*, not a rule.
 When the same change has been suggested several times (for example 3), it is offered to a protocol owner (a team lead)
-who approves or rejects it. Every protocol has a version number, every proposal shows which version it used, and any
-change can be rolled back. In the demo, an officer modifies a proposal and it appears as "v1.1, pending approval".
+who approves or rejects it. Every protocol has a version number, every proposal shows which version it used, every
+change is recorded in the protocol's `change_log`, and any change can be rolled back. The protocols start at v2.0; the
+four changed after the team's review are at v2.1. In the demo, an officer modifies a proposal and it appears as the
+next version, "pending approval".
 
 ---
 
@@ -432,7 +493,8 @@ every part of this README**.
 | Saving cases and audit logs (SQLite) | **Built** |
 | Clario (customer chat in the app, routes A to D, card read-back and correction, live status) | To build |
 | Prorio protocol lookup, proposed solutions, P4 one-click AI action | To build |
-| Protocol Database (synthetic JSON) and "officers teach, leads approve" loop | To build |
+| Protocol Database data: 31 protocols with sources (`backend/data/protocols.json`) | **Built** (data only: no code reads it yet) |
+| Prorio reading the Protocol Database, and the "officers teach, leads approve" loop | To build |
 | Westpac knowledge base answers with sources | To build (a 406-page crawl of public westpac.com.au pages exists in the Retell agent) |
 | Voice | Optional, see [Voice channel](#voice-channel-optional) |
 | Cross-case payee check, surge mode | Stretch goals |
@@ -608,7 +670,8 @@ Team-Astars/
 │   ├── models.py         the shape of incoming requests
 │   ├── mock_data.py      read-only look-ups over the demo customers and transactions
 │   ├── db.py             saving to and loading from the SQLite file
-│   ├── data/             customers.json, transactions.json, cards.json (made-up data)
+│   ├── data/             customers.json, transactions.json, cards.json (made-up data),
+│   │                     protocols.json (Protocol Database), PROTOCOLS_SOURCES.md (its sources and copyright rules)
 │   ├── test_api.py  test_db.py
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands

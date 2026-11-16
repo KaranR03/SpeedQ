@@ -1,6 +1,6 @@
 # Protocol Database: where it comes from, and how we stay on the right side of copyright
 
-`protocols.json` is the Beacon Assist Protocol Database: 30 scenarios Prorio can use to draft proposals. This note
+`protocols.json` is the Beacon Assist Protocol Database: 31 scenarios Prorio can use to draft proposals. This note
 explains how it was built and the rules for changing it.
 
 ## What it is and isn't
@@ -49,7 +49,7 @@ in a way that suggests Westpac built or approved the product.
 
 - Officers **suggest** changes through Modify or Manual decisions; nothing edits this file directly from the dashboard.
 - A protocol owner approves a change; the protocol's `version` goes up (2.0 to 2.1) and the change is added to its
-  history.
+  history (the `change_log` field).
 - Any new fact must come with a source link, in our own words, or be marked `team_design`.
 
 ## What each protocol contains
@@ -62,6 +62,10 @@ before queuing, always the customer's choice), `steps` (who does what, each with
 New issue types compared with the README harm table: SCAM_ALREADY_PAID, VERIFY_CONTACT, UNAUTHORISED_ONLINE_BANKING,
 IDENTITY_THEFT, LOGIN_HELP, ACCOUNT_RESTRICTED_ID_CHECK, PAYMENT_LIMIT_CHANGE, CARD_DECLINED, CARD_ACTIVATION,
 PENDING_TRANSACTION, DIRECT_DEBIT_STOP, BPAY_MISTAKE, PAYID_ISSUE, FAMILY_VIOLENCE_FINANCIAL_ABUSE,
-TRUSTED_PERSON_OR_ELDER_ABUSE, BEREAVEMENT, GAMBLING_HARM, ACCOUNT_CLOSURE, OUTAGE_INCIDENT. Each maps to an existing
-harm category, so the scoring model doesn't change. One proposed new gate: safety cases (family violence, financial
-abuse) never sit below P2.
+TRUSTED_PERSON_ACCESS, ELDER_FINANCIAL_ABUSE, BEREAVEMENT, GAMBLING_HARM, ACCOUNT_CLOSURE, OUTAGE_INCIDENT. Each maps
+to an existing harm category (`_about.harm_categories` holds the points), so the scoring model doesn't change. The
+README lists every issue type with its category and gate.
+
+Gates set in the data: G3 (officer-only, never below P3) for detail changes, limit changes, identity and access cases,
+and giving a trusted person authority; G7 (safety cases never below P2) for family violence, financial abuse and elder
+financial abuse.
