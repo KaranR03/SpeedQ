@@ -1,12 +1,11 @@
-"""Pydantic models: the Retell webhook payload (flat, field names match the voice agent)."""
+"""Pydantic models: the Clario (Retell) case card payload, flat, field names match the voice agent.
+
+Valid issue types come from the Protocol Database (prorio.protocols.ISSUE_TYPES) and the executable actions from
+prorio.propose.ACTIONS.
+"""
 from typing import List, Optional
 
 from pydantic import BaseModel, model_validator
-
-ISSUE_TYPES = ("SCAM_IN_PROGRESS", "FRAUD_UNAUTHORISED", "MONEY_MISSING", "HARDSHIP",
-               "DISPUTE_CHARGE", "CARD_LOST_STOLEN", "CARD_DELIVERY", "GENERAL_ENQUIRY")
-ACTIONS = ("ACTIVATE_SAFEBLOCK", "BLOCK_CARD", "RAISE_DISPUTE", "DRAFT_PAYMENT_RECALL",
-           "DRAFT_SCAM_REPORT", "BOOK_CALLBACK", "SEND_CUSTOMER_UPDATE")
 
 
 class ActionItem(BaseModel):
@@ -18,6 +17,18 @@ class Decision(BaseModel):
     decision: str                           # APPROVE | MODIFY | MANUAL
     actions: Optional[List[ActionItem]] = None   # MODIFY: the edited list to run
     officer: str = "officer"
+    note: str = ""                          # optional: why (shown to the protocol owner)
+    suggest_update: bool = True             # MODIFY: "Suggest as a protocol update?"
+
+
+class OfficerNote(BaseModel):
+    officer: str = "officer"
+    note: str = ""
+
+
+class OwnerDecision(BaseModel):
+    owner: str = "protocol owner"
+    reason: str = ""
 
 
 class Rerank(BaseModel):
@@ -50,7 +61,7 @@ class RetellPayload(BaseModel):
     summary_en: str = ""
     summary_customer_lang: str = ""
     linked_transactions: str = ""   # comma string
-    risk_signals: str = ""          # comma string
+    risk_signals: str = ""          # comma string: CUSTOMER_REPORTS_PRESSURE, VULNERABILITY_CUES, ESSENTIALS_AT_RISK
     customer_confirmed: bool = False
     priority_score: Optional[float] = None   # Retell's estimate: never used for ranking
     priority_band: Optional[str] = None
@@ -59,5 +70,6 @@ class RetellPayload(BaseModel):
     proposed_actions: str = ""      # comma string of action names
     status: str = "QUEUED"
     safeblock_activated: bool = False
+    card_locked: bool = False       # the customer locked their card during the conversation
     case_reference: str = ""
     customer_sentiment: str = ""

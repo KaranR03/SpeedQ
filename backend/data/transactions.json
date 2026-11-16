@@ -25,5 +25,9 @@
   {"id": "TX-8006", "customer_id": "CUST-004", "date": "2026-11-06T00:00:00Z", "amount": -45.00, "type": "card", "payee": "Telstra", "desc": "Mobile plan"},
   {"id": "TX-5001", "customer_id": "CUST-005", "date": "2026-11-15T03:40:00Z", "amount": -64.20, "type": "card", "payee": "Woolworths", "desc": "Woolworths"},
   {"id": "TX-5002", "customer_id": "CUST-005", "date": "2026-11-15T00:15:00Z", "amount": -3.55, "type": "card", "payee": "Translink", "desc": "Translink"},
-  {"id": "TX-5003", "customer_id": "CUST-005", "date": "2026-11-14T09:05:00Z", "amount": -13.99, "type": "card", "payee": "Spotify", "desc": "Spotify"}
+  {"id": "TX-5003", "customer_id": "CUST-005", "date": "2026-11-14T09:05:00Z", "amount": -13.99, "type": "card", "payee": "Spotify", "desc": "Spotify"},
+  {"id": "TX-6001", "customer_id": "CUST-006", "date": "2026-11-14T08:05:00Z", "amount": -71.40, "type": "card", "payee": "IGA", "desc": "IGA West End"},
+  {"id": "TX-6002", "customer_id": "CUST-006", "date": "2026-11-12T00:00:00Z", "amount": -450.00, "type": "transfer", "payee": "Southbank Realty", "desc": "Rent"},
+  {"id": "TX-6003", "customer_id": "CUST-006", "date": "2026-11-11T00:00:00Z", "amount": 1320.00, "type": "deposit", "payee": "Salary", "desc": "Salary"},
+  {"id": "TX-6004", "customer_id": "CUST-006", "date": "2026-11-09T17:40:00Z", "amount": -12.90, "type": "card", "payee": "Netflix", "desc": "Netflix subscription"}
 ]

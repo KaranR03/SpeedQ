@@ -1,5 +1,6 @@
 """Read-only tools over the synthetic JSON data (all customer data is fake)."""
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -31,6 +32,20 @@ def parse_ts(s):
 
 def utcnow():
     return datetime.now(timezone.utc)
+
+
+DEMO_NOW_DEFAULT = "2026-11-15T12:00:00Z"
+
+
+def demo_now():
+    """The "as of" time for account evidence (recoverable payments, recent security changes).
+
+    The sample data is dated 9 to 15 Nov 2026, so a fixed demo clock keeps scores identical on every run.
+    NRY_NOW overrides it (an ISO time), and NRY_NOW=real uses the real clock. Queue waiting time always
+    uses the real clock.
+    """
+    val = os.environ.get("NRY_NOW", DEMO_NOW_DEFAULT)
+    return utcnow() if val.strip().lower() == "real" else parse_ts(val)
 
 
 def get_customer(customer_id):

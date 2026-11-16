@@ -402,7 +402,7 @@ Officers handle one incident instead of hundreds of separate cards.
 
 ## The demo customers
 
-Five made-up customers. Data lives in `backend/data/` (`customers.json`, `transactions.json`, `cards.json`).
+Six made-up customers. Data lives in `backend/data/` (`customers.json`, `transactions.json`, `cards.json`).
 
 | ID | Name | Situation | Expected under Beacon Assist |
 |---|---|---|---|
@@ -411,6 +411,7 @@ Five made-up customers. Data lives in `backend/data/` (`customers.json`, `transa
 | CUST-003 | Priya Sharma | A $89 charge she doesn't recognise (SP DIGITALHUB SUBS) | Card lock offered (G2), **55, P3**, Prorio drafts a dispute |
 | CUST-004 | Minh Nguyen | Sent $650 rent by Osko but the landlord says it never arrived. Prefers Vietnamese | **55, P3**, card shown as "Vietnamese (translated)", outcome returned in Vietnamese |
 | CUST-005 | Alex | Replacement card due 19 Nov, with an everyday account and an eSaver account | Extra example for card-delivery questions |
+| CUST-006 | Jordan Lee | Locked out after the password was changed from a new phone; can't buy groceries | `ACCOUNT_ACCESS` with `ESSENTIALS_AT_RISK`: **60, P2** (locked out 40 + device change 10 + care 10) |
 
 The demo proves three things on screen: the officer understands a case from the card in seconds with **zero
 re-asking**; a P4 case goes from question to approved answer in **one click**; a scam victim is **protected in under a
@@ -420,22 +421,42 @@ minute**.
 
 ## Build status: what this repo runs today
 
-The final design above was agreed at the end of Day 1. The code in this repo was built for the earlier plan
-("Never Repeat Yourself") and is being moved over to it. Until that is done, **the running code does not yet match
-every part of this README**.
-
 | Part | Status |
 |---|---|
-| Backend that receives cards, scores them in code from account data, and keeps a live queue | **Built**, but uses the **earlier scoring** (issue weights up to 100, P1 at 120+, +1 per minute waiting up to +40, scam claim with no signals capped at 60). Needs updating to the 0 to 100 model, bands and gates above. |
-| Officer dashboard (Streamlit): live queue, reasons, Approve / Modify / Manual ("Do it myself"), re-rank with reason, audit log | **Built** (the Manual button is still labelled "Do it myself") |
-| Officer actions | **Built** as a fixed list of mocked actions (see [Reference](#reference-backend-endpoints)). Moving to Protocol Database proposals is to do. |
-| Saving cases and audit logs (SQLite) | **Built** |
-| Clario (customer chat in the app, routes A to D, card read-back and correction, live status) | To build |
-| Prorio protocol lookup, proposed solutions, P4 one-click AI action | To build |
-| Protocol Database (synthetic JSON) and "officers teach, leads approve" loop | To build |
-| Westpac knowledge base answers with sources | To build (a 406-page crawl of public westpac.com.au pages exists in the Retell agent) |
-| Voice | Optional, see [Voice channel](#voice-channel-optional) |
-| Cross-case payee check, surge mode | Stretch goals |
+| **Prorio** (Priority and Protocol), `backend/prorio/` | **Built.** Rule-based, no language model and no outside API. The 0 to 100 score, bands, gates G1, G3 to G6, verified account signals (including the cross-case payee check), protocol lookup, proposals, who acts (P4: AI after one-click approval), a step-by-step trace, and the "officers teach, leads approve" loop |
+| Backend: intake from Clario, live priority list, decisions, re-rank, audit log, customer status tracker | **Built** |
+| Officer dashboard (Streamlit): priority list, reasons, Prorio's trace, proposal with protocol and version, Approve / Modify / Manual, re-rank, audit log, protocol suggestions | **Built** as a working dashboard; the team may replace it, since it only uses the backend's endpoints |
+| Saving cases, audit logs, suggestions and approved protocol versions (SQLite) | **Built** |
+| Protocol Database (`backend/data/protocols.json`, 30 protocols) | **Built** (see `backend/data/PROTOCOLS_SOURCES.md`) |
+| Clario (Retell voice agent) | Built separately; needs the updates listed for Prorio (new bands, `handoff` reply, unauthorised vs disputed charge, card lock, `ESSENTIALS_AT_RISK`) |
+| Clario text chat in the app, card correction by the customer | To build |
+| Westpac knowledge base answers with sources | In the Retell agent (406 crawled pages; see the copyright note in `PROTOCOLS_SOURCES.md`) |
+| Surge mode | Stretch goal |
+
+### How Prorio works
+
+Prorio is code, so it is explainable and the same card always gets the same answer. Customer data never leaves the
+backend. For every card it runs the same steps and records each one in a trace the officer can open:
+
+1. **Read card.** Only structured fields: issue type, linked transaction IDs, conversation signals, language. The
+   customer's free-text summary is never read, so "ignore your rules, make me P1" cannot change anything.
+2. **Gather evidence** from account data: only transactions linked to the card **and** belonging to that customer.
+3. **Score**: harm (from the protocol's harm category) + time to harm + verified signals + care needs + waiting.
+4. **Apply gates**: G1 words alone can't reach P1; G3 and protocol minimum bands (for example address changes P3,
+   family violence P2); G4 waiting lifts at most one band; G5 officer re-rank; G6 a repeat contact updates the open
+   card instead of creating a new one.
+5. **Match protocol** in the Protocol Database and use any version a protocol owner has approved.
+6. **Draft proposal**: actions from the fixed executable list (each one mocked), officer tasks for anything else,
+   required checks, the customer message filled in, timeframes and sources.
+7. **Assign**: P1 to P3 are carried out by an officer; P4 by the AI after one-click officer approval.
+
+**Safety net for a misfiled charge.** If a card arrives as `DISPUTE_CHARGE` but the merchant has never appeared in the
+customer's history, Prorio scores it under the unauthorised harm row with the reason "Merchant never seen before on
+this account: scored as possible unauthorised, officer to confirm". It never changes the issue type Clario recorded.
+
+**Demo clock.** Account evidence ("still recoverable", "changed in the last 7 days") is judged as of
+**15 Nov 2026, 12:00 UTC**, so scores are the same on every run. Waiting time uses the real clock. Set `NRY_NOW` to
+change it, or `NRY_NOW=real` to use the real clock.
 
 ---
 
@@ -467,22 +488,25 @@ It opens in your browser (normally at `http://localhost:8501`).
 
 ### 3. Send in some cards
 
-Until Clario is built, post cards by hand from a third terminal. The scores you see come from the **current
-(earlier) scoring code**, not yet the Beacon Assist model above.
+Without Clario, post cards by hand from a third terminal.
 
 ```bash
-# Priya: disputed $89 charge
-curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-003","customer_name":"Priya S.","issue_type":"DISPUTE_CHARGE","linked_transactions":"TX-7001","proposed_actions":"RAISE_DISPUTE","summary_en":"$89 charge I do not recognise"}'
+# Priya: $89 charge she didn't make, card already locked. 55, P3
+curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-003","customer_name":"Priya S.","issue_type":"FRAUD_UNAUTHORISED","linked_transactions":"TX-7001","card_locked":true,"summary_en":"$89 charge I did not make"}'
 
-# Minh: missing rent, in Vietnamese
+# Minh: missing rent, in Vietnamese. 55, P3
 curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-004","customer_name":"Minh N.","issue_type":"MONEY_MISSING","language":"vi","language_label":"Vietnamese","linked_transactions":"TX-8001","summary_en":"Missing $650 rent payment","summary_customer_lang":"Mất khoản tiền thuê nhà $650"}'
 
-# Maria: scam in progress. Watch her jump to the top
-curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-001","customer_name":"Maria R.","issue_type":"SCAM_IN_PROGRESS","linked_transactions":"TX-9001","risk_signals":"CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES","proposed_actions":"ACTIVATE_SAFEBLOCK,DRAFT_PAYMENT_RECALL,DRAFT_SCAM_REPORT,BOOK_CALLBACK","proposed_explanation":"Likely bank impersonation scam. Protect the account and attempt recovery.","summary_en":"Caller says someone claiming to be from Westpac told her to move her savings.","case_reference":"WGM-0412"}'
+# Sam: not satisfied with the card delivery answer. 5, P4: the AI acts after one click
+curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-002","customer_name":"Sam T.","issue_type":"CARD_DELIVERY","status":"QUEUED","summary_en":"Card not here yet; wants help"}'
+
+# Maria: scam in progress. 100, P1. Watch her jump to the top
+curl -s localhost:8000/case -H 'content-type: application/json' -d '{"customer_id":"CUST-001","customer_name":"Maria R.","issue_type":"SCAM_IN_PROGRESS","linked_transactions":"TX-9001","risk_signals":"CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES","summary_en":"Caller says someone claiming to be from Westpac told her to move her savings.","case_reference":"WGM-0412"}'
 ```
 
-Watch the dashboard: Priya and Minh appear, then Maria arrives and takes the top spot within two seconds. Open her
-case, read the reasons, and press **Approve**. More examples are in [`backend/README.md`](backend/README.md).
+Watch the dashboard: Priya, Minh and Sam appear, then Maria arrives and takes the top spot within two seconds. Open
+her case, read the reasons and "What Prorio did", and press **Approve**. Open Sam's case and press **Approve: AI
+carries it out**. More examples are in [`backend/README.md`](backend/README.md).
 
 ### Starting over
 
@@ -500,9 +524,9 @@ curl -X POST localhost:8000/admin/reset
 The plan is **text first**. Voice reaches Clario only if the existing Retell voice agent is retuned to this design and
 a test call passes in time; otherwise the demo runs by text and voice stays on the roadmap.
 
-The Retell agent was built for the earlier plan, so its prompt still uses the old bands, quotes invented demo wait
-times, and lets the model estimate the score. Whatever it sends, the backend **recomputes the score itself** and never
-ranks on the agent's estimate.
+The Retell agent was built for the earlier plan, so its prompt still uses the old bands and lets the model estimate
+the score. Whatever it sends, Prorio **recomputes the score itself** and never ranks on the agent's estimate. The
+agent should use the band and `handoff` in the webhook reply instead of its own estimate.
 
 If it is used, it sends the card by calling a **custom function** at the end of the conversation:
 
@@ -518,43 +542,58 @@ If it is used, it sends the card by calling a **custom function** at the end of 
 |---|---|
 | `customer_id`, `customer_name` | Who the customer is |
 | `language`, `language_label` | For example `vi` and `Vietnamese` |
-| `issue_type` | One of `SCAM_IN_PROGRESS`, `FRAUD_UNAUTHORISED`, `MONEY_MISSING`, `CARD_LOST_STOLEN`, `HARDSHIP`, `DISPUTE_CHARGE`, `CARD_DELIVERY`, `GENERAL_ENQUIRY`. Anything else is rejected |
+| `issue_type` | One of the 30 issue types in `backend/data/protocols.json` (the original 8 still work). Anything else is rejected |
 | `summary_en`, `summary_customer_lang` | Short summary in English and in the customer's language |
 | `linked_transactions` | For example `TX-9001,TX-9002` |
-| `risk_signals` | Conversation cues: `CUSTOMER_REPORTS_PRESSURE`, `VULNERABILITY_CUES` |
+| `risk_signals` | Conversation cues only: `CUSTOMER_REPORTS_PRESSURE`, `VULNERABILITY_CUES`, `ESSENTIALS_AT_RISK`. Account signals are worked out by Prorio and ignored if sent |
 | `customer_confirmed`, `customer_sentiment` | Whether the customer confirmed the card, and how they sounded |
-| `proposed_explanation`, `proposed_actions` | The suggested fix, as text and a list of action names |
+| `proposed_explanation`, `proposed_actions` | Optional. Kept for reference; Prorio drafts the proposal from the Protocol Database |
 | `status` | `TIER1_RESOLVED` (answered already, kept out of the queue) or `QUEUED` |
 | `case_reference` | An existing `WGM-####` reference. If missing, one is made starting at `WGM-0900` |
-| `priority_score`, `priority_band`, `priority_reasons`, `safeblock_activated` | Accepted but **never used for ranking** |
+| `safeblock_activated`, `card_locked` | Whether the customer turned on SafeBlock or locked their card during the conversation. Recorded, not scored |
+| `priority_score`, `priority_band`, `priority_reasons` | Accepted but **never used for ranking** |
 
 Lists may be sent as comma-separated text or as a JSON list, and `null` means "not provided". The webhook replies
 with a short note for the agent, for example
-`{"case_reference": "WGM-0412", "queued": true, "priority_band": "P1", "caller_message": "..."}`.
+`{"case_reference": "WGM-0412", "queued": true, "priority_band": "P1", "handoff": "WARM_TRANSFER_FRAUD",
+"caller_message": "A fraud specialist is joining now.", "updated_existing_case": false}`. `handoff` is
+`WARM_TRANSFER_FRAUD` (P1 only), `QUEUE` or `NONE`. If the customer already has an open card about the same issue, that
+card is updated and its reference returned (gate G6).
 
 ---
 
 ## Reference: backend endpoints
 
-These are the endpoints the current code provides.
-
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/webhook/retell` | Receives a card from the voice agent, scores it, files it and sends back a short reply |
+| POST | `/webhook/retell` | Receives a card from Clario; Prorio scores it and drafts a proposal; short reply with band, `handoff` and caller message |
 | POST | `/case` | Same as above, for posting cards by hand; returns the full card |
-| GET | `/queue` | Open cases, most urgent first, with reasons and current waiting time |
-| GET | `/case/{id}` | One full card |
-| POST | `/case/{id}/decision` | `{"decision": "APPROVE" \| "MODIFY" \| "MANUAL", "actions": [...], "officer": "name"}` |
-| POST | `/case/{id}/rerank` | `{"band": "P1", "reason": "..."}` or `{"score": 150, "reason": "..."}`. Reason required |
+| GET | `/queue` | The priority list: open cases, most urgent first, with reasons and current waiting time |
+| GET | `/case/{id}` | One full card, including Prorio's proposal and trace |
+| GET | `/case/{id}/proposal` | Prorio's proposed solution: protocol and version, actions, officer tasks, checks, customer message, sources |
+| GET | `/case/{id}/trace` | What Prorio did, step by step |
+| GET | `/case/{id}/status` | The customer's view: Received, Ranked, With an officer, Action taken, Done, and the outcome. No score |
+| POST | `/case/{id}/pickup` | An officer opens the case (`{"officer": "name"}`); the customer sees "With an officer" |
+| POST | `/case/{id}/decision` | `{"decision": "APPROVE" \| "MODIFY" \| "MANUAL", "actions": [...], "officer": "name", "note": "...", "suggest_update": true}` |
+| POST | `/case/{id}/complete` | Close a Manual case: `{"note": "what was done"}` (sent to the customer) |
+| POST | `/case/{id}/rerank` | `{"band": "P1", "reason": "..."}` or `{"score": 90, "reason": "..."}` (0 to 100). Reason required |
 | GET | `/audit/{id}` | The audit log for a case |
-| POST | `/admin/reset` | Clears all cases and demo account changes (no password; demo only) |
+| GET | `/protocols` | Every protocol with its version, harm category, minimum band and decision counts |
+| GET | `/protocols/{issue_type}` | One protocol as Prorio uses it, with approved changes and sources |
+| POST | `/protocols/{issue_type}/rollback` | Undo the latest approved version |
+| GET | `/suggestions` | Protocol suggestions from officers' Modify and Manual decisions |
+| POST | `/suggestions/{id}/approve` | Protocol owner approves (only once it has been suggested enough times); creates a new version |
+| POST | `/suggestions/{id}/reject` | Protocol owner rejects |
+| GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, demo clock |
+| POST | `/admin/reset` | Clears all cases, demo account changes, suggestions and approved versions (no password; demo only) |
 
-Errors: `404` unknown case, `409` already decided, `422` invalid request (unknown issue, missing reason, an action
-not on the allowed list). Interactive docs: `http://localhost:8000/docs` while the backend runs.
+Errors: `404` not found, `409` already decided or not ready, `422` invalid request (unknown issue, missing reason, an
+action not on the allowed list). Interactive docs: `http://localhost:8000/docs` while the backend runs.
 
-The current code's mocked actions are `ACTIVATE_SAFEBLOCK`, `BLOCK_CARD`, `RAISE_DISPUTE`, `DRAFT_PAYMENT_RECALL`,
-`DRAFT_SCAM_REPORT`, `BOOK_CALLBACK` and `SEND_CUSTOMER_UPDATE`. Each only records that it happened; recalls and scam
-reports are always drafts, and money is never moved.
+Executable actions (all mocked, they only record that they happened): `ACTIVATE_SAFEBLOCK`, `BLOCK_CARD`,
+`RAISE_DISPUTE`, `DRAFT_PAYMENT_RECALL`, `DRAFT_PAYMENT_TRACE`, `DRAFT_SCAM_REPORT`, `DRAFT_HARDSHIP_NOTES`,
+`DRAFT_COMPLAINT_RESPONSE`, `ORDER_REPLACEMENT_CARD`, `BOOK_CALLBACK`, `SEND_CUSTOMER_UPDATE`, `SEND_GUIDE_LINK`,
+`REFER_SPECIALIST_TEAM`. Drafts are always drafts, and money is never moved.
 
 ---
 
@@ -562,7 +601,8 @@ reports are always drafts, and money is never moved.
 
 - **Customer data** (accounts, transactions, cards) is read from `backend/data/` on every start.
 - **Cases** are saved in a small **SQLite** file, `backend/nry.db`, created on first start and not committed to git.
-  Cases, audit logs, re-ranks and mocked account changes survive a restart.
+  Cases, audit logs, re-ranks, mocked account changes, protocol suggestions and approved protocol versions survive a
+  restart. `protocols.json` itself is never written by code.
 - To empty it, use **Reset demo data** or `POST /admin/reset`. Set `NRY_DB` to use a separate file.
 
 ---
@@ -577,19 +617,20 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 | `NRY_OFFICER` | `officer` | Dashboard | Name written in the audit log for decisions |
 | `NRY_DB` | `backend/nry.db` | Backend | Where the database file lives |
 | `NRY_WEBHOOK_SECRET` | none (open) | Backend | If set, `/webhook/retell` and `/case` need this value in an `x-webhook-secret` header |
+| `NRY_NOW` | `2026-11-15T12:00:00Z` | Backend | The demo clock for account evidence. `real` uses the real clock |
+| `NRY_SUGGEST_THRESHOLD` | `3` | Backend | How many times a protocol suggestion must be made before the owner can approve it. Set `1` for a quick demo |
 
 ---
 
 ## Tests
 
-Run from the `backend` folder with its environment switched on. They check the **current (earlier) scoring** and will
-be updated with the move to the Beacon Assist model.
+Run from the `backend` folder with its environment switched on.
 
 | Command | What it checks |
 |---|---|
-| `python priority.py` | The current scoring rules, the no-signals scam cap and the waiting-time cap |
-| `python test_api.py` | The whole backend through its endpoints: queue order, decisions, re-ranking and error cases |
-| `python test_db.py` | Restarts the backend for real and checks nothing was lost |
+| `python -m prorio.selftest` | Every worked example in "How priority is worked out", the gates, the cross-case check, the firewall (summaries are ignored), and that all 30 protocols produce a proposal |
+| `python test_api.py` | The whole backend through its endpoints: priority order, `handoff` reply, one problem one card, decisions, the P4 AI action, the customer status tracker, the learning loop, re-ranking and error cases |
+| `python test_db.py` | Restarts the backend for real and checks nothing was lost, including approved protocol versions |
 
 The tests use a throwaway in-memory database, so they never touch `nry.db`.
 
@@ -603,12 +644,19 @@ Team-Astars/
 ├── BUILD.md              the original build brief (earlier plan, kept for reference)
 ├── backend/
 │   ├── main.py           the web service and its endpoints
-│   ├── priority.py       the scoring rules (earlier model, to be updated)
-│   ├── store.py          keeps cases, runs officer decisions and re-ranks
+│   ├── prorio/           Prorio, the Priority and Protocol agent
+│   │   ├── agent.py      the steps and the trace; card_from() is the firewall
+│   │   ├── evidence.py   verified account signals from account data
+│   │   ├── score.py      the 0 to 100 score, bands and gates
+│   │   ├── protocols.py  reads protocols.json plus approved versions
+│   │   ├── propose.py    turns a protocol into a proposal; the executable action list
+│   │   ├── learning.py   officers teach, leads approve
+│   │   └── selftest.py   python -m prorio.selftest
+│   ├── store.py          keeps cases, runs Prorio, officer decisions, re-ranks and the status tracker
 │   ├── models.py         the shape of incoming requests
 │   ├── mock_data.py      read-only look-ups over the demo customers and transactions
 │   ├── db.py             saving to and loading from the SQLite file
-│   ├── data/             customers.json, transactions.json, cards.json (made-up data)
+│   ├── data/             customers.json, transactions.json, cards.json (made-up data), protocols.json
 │   ├── test_api.py  test_db.py
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
@@ -640,8 +688,9 @@ the Westpac knowledge base; the AI never moves money; "talk to a person" is alwa
   demo.
 - **The queue refreshes by polling every 2 seconds**, not by push.
 - **One machine, one process.** SQLite with a single connection suits a demo, not production.
-- **Demo dates.** Sample transactions are dated 10 to 15 November 2026, so "recent transactions" look-ups come back
-  empty once those dates are old. Scoring is unaffected.
+- **Demo dates.** Sample transactions are dated 9 to 15 November 2026. Scoring uses a fixed demo clock (`NRY_NOW`), so
+  it is unaffected; the plain "recent transactions" look-up uses the real clock and comes back empty once the dates
+  are old.
 - **Not yet built:** see [Build status](#build-status-what-this-repo-runs-today).
 - The Retell agent's transfer number (`+61400000000`) is a placeholder and always fails.
 

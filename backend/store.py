@@ -1,15 +1,23 @@
-"""In-memory case store. No database: a dict is enough for the demo."""
+"""Case store: keeps Customer Service Cards, runs Prorio on them, and records officer decisions.
+
+Cases live in memory and are saved to SQLite (db.py) so they survive a restart.
+"""
 import threading
 
 import db
 import mock_data as md
-import priority
-from models import ACTIONS, ISSUE_TYPES, RetellPayload
+from models import RetellPayload
+from prorio import agent, learning, protocols
+from prorio.propose import ACTIONS
+from prorio.score import EXECUTOR, band_for
 
 CASES = {}  # case_id -> case dict (created_at kept as datetime, serialised on the way out)
 QUEUE_STATUSES = {"QUEUED", "AWAITING_CUSTOMER_CONFIRM", "IN_REVIEW"}
-_lock = threading.Lock()
-_counter = 899  # generated refs start at WGM-0900 so they never clash with Retell's own (e.g. WGM-0412)
+STAGES = ("RECEIVED", "RANKED", "WITH_OFFICER", "ACTION_TAKEN", "DONE")  # what the customer sees on their card
+STAGE_TEXT = {"RECEIVED": "Received", "RANKED": "Ranked", "WITH_OFFICER": "With an officer",
+              "ACTION_TAKEN": "Action taken", "DONE": "Done"}
+_lock = threading.RLock()
+_counter = 899  # generated refs start at WGM-0900 so they never clash with Clario's own (e.g. WGM-0412)
 
 
 def _split(s):
@@ -19,46 +27,95 @@ def _split(s):
 def _new_id():
     global _counter
     _counter += 1
-    while f"WGM-{_counter:04d}" in CASES:  # cases now survive restarts, so skip taken references
+    while f"WGM-{_counter:04d}" in CASES:  # cases survive restarts, so skip taken references
         _counter += 1
     return f"WGM-{_counter:04d}"
 
 
+def _now_str():
+    return md.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _params(action, linked, params=None):
     p = dict(params or {})
-    if action == "DRAFT_PAYMENT_RECALL" and linked:
+    if action in ("DRAFT_PAYMENT_RECALL", "DRAFT_PAYMENT_TRACE", "RAISE_DISPUTE") and linked:
         p.setdefault("transaction_id", linked[0])
     if action == "BOOK_CALLBACK":
         p.setdefault("when", "tomorrow 10:00")
     return p
 
 
+def _minutes(case, now=None):
+    return max(0, int(((now or md.utcnow()) - case["created_at"]).total_seconds() // 60))
+
+
+def _open_cases():
+    return [c for c in CASES.values() if c["status"] in QUEUE_STATUSES]
+
+
+def _stage(case, stage):
+    if not case["card_status"]["history"] or case["card_status"]["history"][-1]["stage"] != stage:
+        case["card_status"]["history"].append({"stage": stage, "ts": _now_str()})
+    case["card_status"]["stage"] = stage
+    case["card_status"]["label"] = STAGE_TEXT[stage]
+
+
+def _audit(case, actor, action, before=None, after=None, result="", params=None, ok=True):
+    case["audit_log"].append({"ts": _now_str(), "actor": actor, "action": action, "params": params or {},
+                              "before": before, "after": after, "ok": ok, "result": result})
+
+
 def rescore(case, now=None):
-    """Recompute priority from account data. Called on every queue read so ageing is current."""
+    """Recompute priority with Prorio. Called on every queue read so waiting time stays current."""
     if case["priority"] and case["status"] not in QUEUE_STATUSES:
-        return  # decided cases keep the score they were decided at (SafeBlock etc. must not rewrite history)
-    case["priority"] = priority.score_case(
-        case["issue_type"], case["customer_id"], case["linked_transactions"],
-        case["_caller_signals"], case["created_at"], now)
-    case["risk_signals"] = case["priority"]["signals"]
-    ov = case.get("_override")  # officer re-rank pins the score; the reason stays visible
+        return  # decided cases keep the score they were decided at
+    card = agent.card_from(case)
+    pr, _, _ = agent.rank(card, _minutes(case, now), _open_cases())
+    ov = case.get("_override")  # officer re-rank (gate G5) pins the score; the reason stays visible
     if ov:
-        p = case["priority"]
-        p["score"], p["band"] = ov["score"], priority.band_for(ov["score"])
-        p["reasons"].append(f"Manually re-ranked by {ov['actor']}: {ov['reason']}")
+        pr["score"], pr["band"] = ov["score"], band_for(ov["score"])
+        pr["executor"] = EXECUTOR[pr["band"]]
+        pr["reasons"].append(f"Manually re-ranked by {ov['actor']}: {ov['reason']}")
+        pr["gates"].append("G5_OFFICER_OVERRIDE")
+    case["priority"] = pr
+    case["risk_signals"] = pr["signals"] + pr["caller_signals"]
+    if case.get("proposed_solution"):
+        case["proposed_solution"]["executor"] = pr["executor"]
+
+
+def _draft(case):
+    """Full Prorio run: priority, proposal and trace."""
+    pr, proposal, trace = agent.draft(agent.card_from(case), _minutes(case), _open_cases())
+    case["proposed_solution"] = proposal
+    case["prorio_trace"] = trace
+    case["priority"] = {}
+    rescore(case)  # applies any officer override and keeps one code path for priority
+
+
+def _find_repeat(p: RetellPayload):
+    """Gate G6: one problem, one card. An open card for the same customer and issue, or the reference given."""
+    if p.case_reference and p.case_reference in CASES:
+        c = CASES[p.case_reference]
+        if c["customer_id"] == p.customer_id and c["status"] in QUEUE_STATUSES:
+            return c
+    if p.status == "TIER1_RESOLVED":
+        return None
+    return next((c for c in _open_cases() if c["customer_id"] == p.customer_id and c["issue_type"] == p.issue_type),
+                None)
 
 
 def create_case(p: RetellPayload):
-    if p.issue_type not in ISSUE_TYPES:
+    if p.issue_type not in protocols.ISSUE_TYPES:
         raise ValueError(f"unknown issue_type {p.issue_type!r}")
     cust = md.get_customer(p.customer_id) or {}
     linked = _split(p.linked_transactions)
-    actions = []
-    for a in _split(p.proposed_actions):
-        if a not in ACTIONS:
-            continue  # whitelist only
-        actions.append({"action": a, "params": _params(a, linked)})
+    clario = {"score": p.priority_score, "band": p.priority_band, "reasons": p.priority_reasons,
+              "safeblock_claimed": p.safeblock_activated,
+              "proposed_actions": _split(p.proposed_actions), "explanation": p.proposed_explanation}
     with _lock:
+        existing = _find_repeat(p)
+        if existing:
+            return _update_repeat(existing, p, linked, clario)
         cid = p.case_reference if p.case_reference and p.case_reference not in CASES else _new_id()
         case = {
             "case_id": cid,
@@ -76,17 +133,50 @@ def create_case(p: RetellPayload):
             "customer_confirmed": p.customer_confirmed,
             "customer_sentiment": p.customer_sentiment,
             "priority": {},
-            "retell_estimate": {"score": p.priority_score, "band": p.priority_band,
-                                "safeblock_claimed": p.safeblock_activated},
-            "proposed_solution": {"explanation": p.proposed_explanation, "actions": actions},
+            "retell_estimate": clario,
+            "clario_reported": {"safeblock_activated": p.safeblock_activated, "card_locked": p.card_locked},
+            "proposed_solution": {},
+            "prorio_trace": [],
             "status": "TIER1_RESOLVED" if p.status == "TIER1_RESOLVED" else "QUEUED",
+            "card_status": {"stage": "RECEIVED", "label": STAGE_TEXT["RECEIVED"], "history": []},
             "officer_decision": None,
+            "outcome": None,
+            "contacts": 1,
             "audit_log": [],
             "_caller_signals": _split(p.risk_signals),
         }
-        rescore(case)
+        _stage(case, "RECEIVED")
+        _draft(case)
+        if case["status"] == "TIER1_RESOLVED":
+            _stage(case, "DONE")  # Clario answered it; no officer needed
+        else:
+            _stage(case, "RANKED")
+        _audit(case, "AI (Prorio)", "PRORIO_DRAFT", after={"score": case["priority"]["score"],
+                                                            "band": case["priority"]["band"]},
+               result=case["proposed_solution"]["explanation"])
         CASES[cid] = case
         db.save_case(case)
+    return case
+
+
+def _update_repeat(case, p, linked, clario):
+    before = {"score": case["priority"]["score"], "band": case["priority"]["band"]}
+    case["linked_transactions"] += [t for t in linked if t not in case["linked_transactions"]]
+    case["_caller_signals"] += [s for s in _split(p.risk_signals) if s not in case["_caller_signals"]]
+    for k in ("summary_en", "summary_customer_lang"):
+        if getattr(p, k):
+            case[k] = getattr(p, k)
+    for k in ("safeblock_activated", "card_locked"):
+        case["clario_reported"][k] = case["clario_reported"][k] or getattr(p, k)
+    case["retell_estimate"] = clario
+    case["contacts"] = case.get("contacts", 1) + 1
+    _draft(case)
+    _audit(case, "AI (Prorio)", "REPEAT_CONTACT", before=before,
+           after={"score": case["priority"]["score"], "band": case["priority"]["band"]},
+           result=f"Customer contacted again about the same issue (contact {case['contacts']}); card updated, "
+                  f"not duplicated")
+    db.save_case(case)
+    case["_updated_existing"] = True  # read (and removed) by the webhook reply; never saved
     return case
 
 
@@ -99,8 +189,9 @@ def _ref(prefix):
     return f"{prefix}-{_refs[prefix]:04d}"
 
 
-def _now_str():
-    return md.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+DRAFT_PREFIX = {"DRAFT_PAYMENT_TRACE": ("TRC", "Payment trace draft"), "DRAFT_SCAM_REPORT": ("RPT", "Scam report draft"),
+                "DRAFT_HARDSHIP_NOTES": ("HSN", "Hardship notes draft"),
+                "DRAFT_COMPLAINT_RESPONSE": ("CMP", "Complaint response draft")}
 
 
 def run_action(case, name, params, actor):
@@ -123,20 +214,31 @@ def run_action(case, name, params, actor):
             result = f"Card {card['mask']} blocked (mock)"
         else:
             ok, result = False, "No active card on file"
-    elif name in ("RAISE_DISPUTE", "DRAFT_PAYMENT_RECALL"):
+    elif name in ("RAISE_DISPUTE", "DRAFT_PAYMENT_RECALL", "DRAFT_PAYMENT_TRACE"):
         tx = md.get_transaction(params.get("transaction_id", ""))
         if not tx or tx["customer_id"] != cid:
             ok, result = False, "Transaction not found for this customer"
         elif name == "RAISE_DISPUTE":
             result = f"Dispute {_ref('DSP')} raised for {tx['id']} (mock)"
-        else:
+        elif name == "DRAFT_PAYMENT_RECALL":
             result = f"Recall draft {_ref('RCL')} created for {tx['id']}. DRAFT ONLY: no money moved"
-    elif name == "DRAFT_SCAM_REPORT":
-        result = f"Scam report draft {_ref('RPT')} created. DRAFT ONLY"
+        else:
+            result = f"Payment trace draft {_ref('TRC')} created for {tx['id']}. DRAFT ONLY"
+    elif name in DRAFT_PREFIX:
+        prefix, text = DRAFT_PREFIX[name]
+        result = f"{text} {_ref(prefix)} created. DRAFT ONLY"
+    elif name == "ORDER_REPLACEMENT_CARD":
+        result = f"Replacement card request {_ref('RPL')} prepared to the address on file (mock)"
     elif name == "BOOK_CALLBACK":
         result = f"Callback {_ref('CBK')} booked: {params.get('when', 'unspecified')} (mock)"
     elif name == "SEND_CUSTOMER_UPDATE":
         result = f"Customer update {_ref('MSG')} recorded as sent (mock)"
+    elif name == "SEND_GUIDE_LINK":
+        result = f"How-to link {_ref('LNK')} recorded as sent (mock)"
+    elif name == "REFER_SPECIALIST_TEAM":
+        result = f"Referral {_ref('REF')} to the specialist team recorded (mock)"
+    else:
+        ok, result = False, f"Unknown action {name}"
     return {"ts": _now_str(), "actor": actor, "action": name, "params": params,
             "before": before, "after": after, "ok": ok, "result": result}
 
@@ -144,7 +246,7 @@ def run_action(case, name, params, actor):
 STATUS_FOR = {"APPROVE": "APPROVED", "MODIFY": "MODIFIED", "MANUAL": "MANUAL"}
 
 
-def decide(case_id, decision, actions, actor):
+def decide(case_id, decision, actions, actor, note="", suggest_update=True):
     """KeyError -> 404, RuntimeError -> 409, ValueError -> 422."""
     if decision not in STATUS_FOR:
         raise ValueError(f"unknown decision {decision!r}")
@@ -154,6 +256,7 @@ def decide(case_id, decision, actions, actor):
             raise KeyError(case_id)
         if case["status"] not in QUEUE_STATUSES:
             raise RuntimeError(f"case already {case['status']}")
+        rescore(case)
         linked = case["linked_transactions"]
         if decision == "APPROVE":
             todo = [(a["action"], a["params"]) for a in case["proposed_solution"]["actions"]]
@@ -166,14 +269,63 @@ def decide(case_id, decision, actions, actor):
             todo = [(a.action, _params(a.action, linked, a.params)) for a in actions]
         else:
             todo = []
-        case["audit_log"].append({"ts": _now_str(), "actor": actor, "action": f"DECISION_{decision}",
-                                  "params": {}, "before": {"status": case["status"]},
-                                  "after": {"status": STATUS_FOR[decision]}, "ok": True,
-                                  "result": f"{actor} chose {decision}"})
+        executor = case["priority"]["executor"]
+        doer = f"AI (Prorio), approved by {actor}" if executor == "AI_AFTER_APPROVAL" else actor
+        _audit(case, actor, f"DECISION_{decision}", before={"status": case["status"]},
+               after={"status": STATUS_FOR[decision]},
+               result=f"{actor} chose {decision}" + (f": {note}" if note else ""))
         for name, params in todo:
-            case["audit_log"].append(run_action(case, name, params, actor))
+            case["audit_log"].append(run_action(case, name, params, doer))
         case["status"] = STATUS_FOR[decision]
         case["officer_decision"] = decision
+        if case["card_status"]["stage"] != "WITH_OFFICER":
+            _stage(case, "WITH_OFFICER")
+        if decision != "MANUAL":
+            _stage(case, "ACTION_TAKEN")
+            case["outcome"] = {"message": case["proposed_solution"]["customer_message"],
+                               "language": case["language"], "sent_at": _now_str()}
+            _stage(case, "DONE")
+        sug = learning.record(case, decision, [n for n, _ in todo], actor, note, suggest_update, _now_str())
+        if sug:
+            _audit(case, actor, "PROTOCOL_SUGGESTION", after={"suggestion": sug["id"], "count": sug["count"]},
+                   result=f"Suggested as a protocol update for {sug['issue_type']} v{sug['from_version']} "
+                          f"-> v{sug['proposed_version']} ({sug['count']} of {sug['threshold']}, pending approval)")
+            case["protocol_suggestion"] = sug["id"]
+        db.save_case(case)
+    return case
+
+
+def pick_up(case_id, actor):
+    """An officer opens the case: the customer's card shows "With an officer"."""
+    with _lock:
+        case = CASES.get(case_id)
+        if not case:
+            raise KeyError(case_id)
+        if case["status"] not in QUEUE_STATUSES:
+            raise RuntimeError(f"case already {case['status']}")
+        if case["card_status"]["stage"] != "WITH_OFFICER":
+            case["status"] = "IN_REVIEW"
+            _stage(case, "WITH_OFFICER")
+            _audit(case, actor, "PICKED_UP", result=f"{actor} is working on the case")
+            db.save_case(case)
+    return case
+
+
+def complete(case_id, actor, note):
+    """Close a case the officer handled manually."""
+    note = (note or "").strip()
+    if not note:
+        raise ValueError("say what was done")
+    with _lock:
+        case = CASES.get(case_id)
+        if not case:
+            raise KeyError(case_id)
+        if case["status"] != "MANUAL" or case["card_status"]["stage"] == "DONE":
+            raise RuntimeError("only an open manual case can be completed")
+        _stage(case, "ACTION_TAKEN")
+        case["outcome"] = {"message": note, "language": case["language"], "sent_at": _now_str()}
+        _stage(case, "DONE")
+        _audit(case, actor, "MANUAL_COMPLETE", result=note)
         db.save_case(case)
     return case
 
@@ -185,20 +337,28 @@ def public(case):
     return out
 
 
+def customer_view(case):
+    """What the customer may see on their card: no score, no reasons, no internal notes."""
+    return {"case_reference": case["case_id"], "issue_type": case["issue_type"], "summary": case["summary_en"],
+            "summary_customer_lang": case["summary_customer_lang"], "status": case["card_status"]["label"],
+            "stage": case["card_status"]["stage"], "history": case["card_status"]["history"],
+            "outcome": case["outcome"]}
+
+
 def queue():
     now = md.utcnow()
-    live = [c for c in CASES.values() if c["status"] in QUEUE_STATUSES]
+    live = _open_cases()
     for c in live:
         rescore(c, now)
     live.sort(key=lambda c: (-c["priority"]["score"], c["created_at"]))
     return [public(c) for c in live]
 
 
-BAND_SCORE = {"P1": 120, "P2": 70, "P3": 30, "P4": 10}  # a band pins the score inside that band
+BAND_SCORE = {"P1": 90, "P2": 70, "P3": 50, "P4": 20}  # a band pins the score in the middle of that band
 
 
 def rerank(case_id, band, score, reason, actor):
-    """Officer re-rank, always with a reason. The pinned score stops ageing from undoing it.
+    """Officer re-rank (gate G5), always with a reason. The pinned score stops waiting time from undoing it.
     KeyError -> 404, RuntimeError -> 409, ValueError -> 422."""
     reason = (reason or "").strip()
     if not reason:
@@ -207,8 +367,8 @@ def rerank(case_id, band, score, reason, actor):
         raise ValueError("give exactly one of band or score")
     if band is not None and band not in BAND_SCORE:
         raise ValueError(f"unknown band {band!r}")
-    if score is not None and score < 0:
-        raise ValueError("score must be 0 or more")
+    if score is not None and not 0 <= score <= 100:
+        raise ValueError("score must be between 0 and 100")
     with _lock:
         case = CASES.get(case_id)
         if not case:
@@ -220,15 +380,13 @@ def rerank(case_id, band, score, reason, actor):
         case["_override"] = {"score": BAND_SCORE[band] if band else score, "reason": reason, "actor": actor}
         rescore(case)
         after = {"score": case["priority"]["score"], "band": case["priority"]["band"]}
-        case["audit_log"].append({"ts": _now_str(), "actor": actor, "action": "RERANK", "params": {},
-                                  "before": before, "after": after, "ok": True,
-                                  "result": f"Re-ranked by {actor}: {reason}"})
+        _audit(case, actor, "RERANK", before=before, after=after, result=f"Re-ranked by {actor}: {reason}")
         db.save_case(case)
     return case
 
 
 def reset():
-    """Wipe cases and mock account changes (demo rehearsal)."""
+    """Wipe cases, mock account changes and the learning loop (demo rehearsal)."""
     global _counter
     with _lock:
         CASES.clear()
@@ -236,11 +394,15 @@ def reset():
         _counter = 899
         db.clear()
         md.reset()
+        learning.reset()
+        protocols.reset()
 
 
 def _restore():
     """Reload cases and mock account state saved by a previous run."""
     for body in db.load_cases():
+        if "card_status" not in body:
+            continue  # saved by the pre-Prorio backend: press Reset demo data to clear it
         body["created_at"] = md.parse_ts(body["created_at"])
         CASES[body["case_id"]] = body
     for key, val in db.load_state().items():

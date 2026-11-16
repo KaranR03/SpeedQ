@@ -38,5 +38,16 @@
     ],
     "safeblock": false, "lockouts": [], "open_cases": [],
     "payees": []
+  },
+  {
+    "customer_id": "CUST-006", "name": "Jordan Lee", "short_name": "Jordan L.", "language": "en", "language_label": "English",
+    "accounts": [{"id": "ACC-4410", "type": "Everyday", "mask": "...4410", "balance": 312.85}],
+    "safeblock": false, "open_cases": [],
+    "lockouts": [{"at": "2026-11-15T07:30:00Z", "reason": "Signed out after a password change; can't sign back in"}],
+    "security_events": [
+      {"type": "device_added", "at": "2026-11-15T07:18:00Z", "detail": "New phone registered to online banking"},
+      {"type": "password_change", "at": "2026-11-15T07:20:00Z", "detail": "Password changed from the new phone"}
+    ],
+    "payees": [{"name": "Southbank Realty", "added_at": "2024-08-01T00:00:00Z"}]
   }
 ]
