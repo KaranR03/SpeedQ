@@ -14,6 +14,9 @@ _lock = threading.Lock()
 _db = sqlite3.connect(PATH, check_same_thread=False)
 _db.execute("CREATE TABLE IF NOT EXISTS cases (case_id TEXT PRIMARY KEY, body TEXT NOT NULL)")
 _db.execute("CREATE TABLE IF NOT EXISTS mock_state (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+# Prorio's learning loop: protocol suggestions, approved protocol versions and decision counts
+_db.execute("CREATE TABLE IF NOT EXISTS docs (kind TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, "
+            "PRIMARY KEY (kind, id))")
 _db.commit()
 
 
@@ -47,6 +50,21 @@ def load_state():
         return dict(_db.execute("SELECT key, value FROM mock_state").fetchall())
 
 
+def save_doc(kind, doc_id, body):
+    _run("INSERT OR REPLACE INTO docs VALUES (?, ?, ?)", (kind, doc_id, json.dumps(body, default=_enc)))
+
+
+def delete_doc(kind, doc_id):
+    _run("DELETE FROM docs WHERE kind = ? AND id = ?", (kind, doc_id))
+
+
+def load_docs(kind):
+    with _lock:
+        rows = _db.execute("SELECT id, body FROM docs WHERE kind = ? ORDER BY id", (kind,)).fetchall()
+    return {r[0]: json.loads(r[1]) for r in rows}
+
+
 def clear():
     _run("DELETE FROM cases")
     _run("DELETE FROM mock_state")
+    _run("DELETE FROM docs")
