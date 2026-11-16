@@ -4,7 +4,7 @@
 
 When a customer rings the bank about something urgent, like a scam in progress, they often explain it once to a phone
 assistant, then again to a person, then again to a specialist. Meanwhile the cases that need help *right now* sit in
-the same line as a question about where a card is.
+the same line as a question about where a card is..
 
 **Never Repeat Yourself** fixes both problems:
 
