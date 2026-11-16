@@ -3,11 +3,27 @@
 ```
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+This also serves the new officer website at `http://127.0.0.1:8000`. No frontend build or separate UI process is
+needed. **Load sample cases** adds a synthetic queue without resetting existing work. The old Streamlit dashboard
+is optional. The API/schema reference at `/docs` is self-hosted and follows the same staff access controls.
+
 Checks: `python -m prorio.selftest` (Prorio's scoring, gates and proposals), `python test_api.py` (the API end to end),
-`python test_db.py` (persistence across a restart). All customer data is synthetic.
+`python test_db.py` (persistence across a restart), `python test_workspace.py` (website integration and security).
+`python test_insights.py` covers the analytics, customer scope, payment totals and evidence/live-clock boundaries.
+Browser tests: `cd ../frontend && npm ci && npm test` (Node 22.12+ and Chromium). All customer data is synthetic.
+
+Staff endpoints reject remote clients in local demo mode. Set `NRY_STAFF_PASSWORD` and optionally `NRY_STAFF_USER`
+to enable Basic authentication, and use HTTPS for remote connections. Set `NRY_ALLOWED_HOSTS` to the intended hostname.
+In this mode, configure `NRY_WEBHOOK_SECRET` for intake; the browser never receives these secrets. The shared account
+is a prototype control, not production SSO or role-based authorisation. See `../DESIGN.md` for boundaries.
+
+`GET /workspace/insights` aggregates the saved workspace under the case-store lock. It does not reset cases or execute
+actions. `GET /case/{id}/context` returns masked accounts and owned transactions for that case's customer, with the
+fixed evidence clock and a separate current snapshot time. Both endpoints inherit staff access control. See
+`../FEATURE_REVIEW.md` for metric definitions and limits.
 
 ## Prorio
 
