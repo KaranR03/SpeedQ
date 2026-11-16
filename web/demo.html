@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beacon Assist · Demo</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script type="module" src="/static/demo.js"></script>
+</head>
+<body class="demo">
+  <div class="dbar">
+    <b>Beacon Assist</b>
+    <span id="scenes"></span>
+    <span class="spacer"></span>
+    <label class="small">Speed
+      <select id="speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+    </label>
+    <button class="btn small" id="reset">Reset demo</button>
+  </div>
+  <div class="caption" id="caption">Pick a customer to start. Left: the customer's app with Clario. Right: the officer's dashboard, live.</div>
+  <div class="stage">
+    <div class="left"><iframe id="cust" src="/customer?embed=1" title="Customer app"></iframe></div>
+    <iframe id="off" src="/officer" title="Officer dashboard"></iframe>
+  </div>
+</body>
+</html>

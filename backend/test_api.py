@@ -162,10 +162,28 @@ assert rr("NOPE", {"band": "P1", "reason": "x"}).status_code == 404
 assert rr("WGM-0412", {"band": "P1", "reason": "x"}).status_code == 409
 r = rr(old["case_id"], {"band": "P1", "reason": "Customer is elderly and alone", "officer": "j.officer"}).json()
 assert r["priority"]["band"] == "P1" and r["priority"]["score"] == 90 and ids()[0] == old["case_id"]
+assert r["priority"]["band_label"] == "P1 Critical", r["priority"]["band_label"]   # label follows the new band
 assert "Customer is elderly and alone" in r["priority"]["reasons"][-1]
 last = c.get("/audit/" + old["case_id"]).json()[-1]
 assert last["action"] == "RERANK" and last["before"]["score"] == 10 and last["after"]["score"] == 90
 print("Waiting and re-rank OK")
+
+# --- Glass-box card correction, Clario's look-up, web pages and security headers ---
+m = post(dict(customer_id="CUST-004", issue_type="MONEY_MISSING", language="vi", linked_transactions="TX-8001"))
+r = c.post("/webhook/retell", json=dict(customer_id="CUST-004", issue_type="MONEY_MISSING", case_reference=m["case_id"],
+                                         risk_signals="ESSENTIALS_AT_RISK", correction="Rent is due tomorrow"))
+assert r.json()["updated_existing_case"] and r.json()["case_reference"] == m["case_id"], r.text
+got = c.get("/case/" + m["case_id"]).json()
+assert got["customer_corrections"][-1]["text"] == "Rent is due tomorrow" and got["contacts"] == m["contacts"]
+assert got["audit_log"][-1]["action"] == "CUSTOMER_CORRECTION" and got["audit_log"][-1]["actor"] == "Customer (via Clario)"
+assert c.get(f"/case/{m['case_id']}/status").json()["corrections"][-1]["text"] == "Rent is due tomorrow"
+lk = c.get("/clario/CUST-002/lookup").json()
+assert lk["card_delivery"]["expected"] == "2026-11-19" and all("balance" not in a for a in lk["accounts"])
+assert c.get("/clario/NOPE/lookup").status_code == 404
+for path in ("/officer", "/customer", "/demo", "/static/officer.js"):
+    resp = c.get(path)
+    assert resp.status_code == 200 and "script-src 'self'" in resp.headers["content-security-policy"], path
+print("Correction, look-up and pages OK")
 
 # --- Messy agent input and the optional shared secret ---
 messy = dict(customer_id="CUST-003", issue_type="DISPUTE_CHARGE", language_label=None, summary_customer_lang=None,

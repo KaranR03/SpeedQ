@@ -382,6 +382,18 @@ time, and officers can re-rank.
 - **Re-rank** any case with a required reason (G5). It is logged.
 - An **audit log** on every case: who did what, when, and what changed.
 
+What makes it more than a ticket queue (all live in `web/`, see [Run it](#run-it)):
+
+- **The list re-orders itself.** New cases flash in, and rows slide to their new place when a more urgent case lands.
+- **A score receipt.** Every point is a line, tagged **Verified** (account data), **Said** (the customer's words),
+  **Issue type**, **Rule** or **Clock**, so it's obvious why typing "scam" can't jump the queue.
+- **"View as": Officer, Prorio or Customer.** The same card through three sets of permissions. Prorio's view shows
+  that it never reads the customer's words; the customer's view shows that they never see the score or which fraud
+  alarms tripped. Least privilege and the two-agent firewall, visible in two seconds.
+- **What the agents did.** Prorio's step-by-step trace, and in the customer app each look-up Clario made.
+- **"Officer only" is shown, not hidden.** Anything that opens a door is listed as a task only a person may do.
+- **Corrections arrive live.** When a customer adds to their card, the officer's card highlights the change.
+
 ---
 
 ## The Protocol Database and the learning loop
@@ -486,11 +498,14 @@ minute**.
 |---|---|
 | **Prorio** (Priority and Protocol), `backend/prorio/` | **Built.** Rule-based, no language model and no outside API. The 0 to 100 score, bands, gates G1 and G3 to G7, verified account signals (including the cross-case payee check), protocol lookup, proposals, who acts (P4: AI after one-click approval), a step-by-step trace, and the "officers teach, leads approve" loop |
 | Backend: intake from Clario, live priority list, decisions, re-rank, audit log, customer status tracker | **Built** |
-| Officer dashboard (Streamlit): priority list, reasons, Prorio's trace, proposal with protocol and version, Approve / Modify / Manual, re-rank, audit log, protocol suggestions | **Built** as a working dashboard; the team may replace it, since it only uses the backend's endpoints |
+| **Officer dashboard** (`/officer`): live priority list, score receipt, "view as" lenses, proposal with protocol and version, Approve / Modify / Manual, pick up, re-rank, audit log, Protocols tab with suggestions, approval and rollback | **Built** (plain HTML, CSS and JavaScript served by the backend; no build step, works offline) |
+| **Customer app** (`/customer`): Clario's conversation for five demo customers, Face ID and protection timer, card read-back, the glass-box card with live tracker and corrections, the outcome message | **Built.** Customer lines are scripted; Clario's look-ups, the card, Prorio's ranking and the tracker are real |
+| **Side-by-side demo** (`/demo`): customer app and officer dashboard together, with scene buttons and captions | **Built**, for recording the video |
+| Streamlit console (`console/`) | Kept as a fallback |
 | Saving cases, audit logs, suggestions and approved protocol versions (SQLite) | **Built** |
 | Protocol Database (`backend/data/protocols.json`, 31 protocols) | **Built**, and read by Prorio (see `backend/data/PROTOCOLS_SOURCES.md`) |
 | Clario (Retell voice agent) | Built separately; needs the updates listed for Prorio (new bands, `handoff` reply, unauthorised vs disputed charge, card lock, `ESSENTIALS_AT_RISK`) |
-| Clario text chat in the app, card correction by the customer | To build |
+| Clario with a live language model in the text chat | Not in this repo: the live Clario is the Retell agent (see [The live demo](#the-live-demo)) |
 | Westpac knowledge base answers with sources | In the Retell agent (406 crawled pages; see the copyright note in `PROTOCOLS_SOURCES.md`) |
 | Surge mode | Stretch goal |
 
@@ -523,9 +538,9 @@ change it, or `NRY_NOW=real` to use the real clock.
 
 ## Run it
 
-**You need:** Python 3 (built and tested on 3.9) and a terminal.
+**You need:** Python 3 (built and tested on 3.9) and a terminal. Nothing else: no API key, no internet, no build step.
 
-### 1. Start the backend
+### 1. Start the backend (it also serves the web pages)
 
 ```bash
 cd backend
@@ -535,7 +550,45 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### 2. Start the officer dashboard (a second terminal)
+Then open:
+
+| Page | What it is |
+|---|---|
+| `http://localhost:8000/demo` | **Start here.** Customer app on the left, officer dashboard on the right, scene buttons on top |
+| `http://localhost:8000/officer` | The officer dashboard on its own |
+| `http://localhost:8000/customer` | The customer app on its own (pick a demo customer) |
+| `http://localhost:8000/customer?track=WGM-0412` | Only the live card for one case, for example one created by a Retell call |
+
+### Recording the video
+
+1. Open `/demo` in a full-screen browser window, press **Reset demo**, and set the speed (1× for the video).
+2. Play the scenes in this order: **Maria** (protected in under a minute, jumps to P1), **Minh** (Vietnamese; adds to
+   his card and the officer sees it live), **Sam** (P4: one click and the AI sends the answer), **Priya**, **Jordan**
+   ("talk to a person").
+3. Between scenes, work the officer side: open Maria, show **View as** Prorio and Customer, then **Approve**. Open Sam
+   and **Approve (AI sends it)**: his card on the left reaches Done. Open Minh and **Modify** (add a callback) to
+   create a protocol suggestion, then show the **Protocols** tab.
+4. To show a lead approving a new protocol version in one go, start the backend with `NRY_SUGGEST_THRESHOLD=1`.
+
+The yellow caption strip says what is happening in each scene, so the video reads without a voice-over. The phone
+footer says plainly that the customer's lines are scripted and everything else is live.
+
+### The live demo
+
+For the on-site pitch, everything runs on one laptop, exactly as above. Only a live Clario needs the internet.
+
+- **Live Clario = the Retell agent.** It already has its own language model, voice, language detection and knowledge
+  base, and its key stays in Retell, so no AI key is needed in this repo. It sends each card to `/webhook/retell`.
+  Retell can't reach `localhost`, so open a tunnel (for example `ngrok http 8000`) and use your phone's hotspot, not
+  the venue Wi-Fi. Open `/customer?track=<reference>` to show the customer's live card while the officer works.
+- **Hand a judge the phone.** On the same hotspot, a phone can open `http://<laptop IP>:8000/customer`. Start the
+  backend with `--host 0.0.0.0` for that (it then accepts connections from the hotspot, so don't do it on a shared
+  network).
+- **Fallback.** If the internet or Retell fails, the scripted scenes on `/demo` still run the real backend, and the
+  recorded video is the last resort.
+- **Before going on stage:** reset the demo, run one scene end to end, check the officer name, and close other tabs.
+
+### 2. Optional: the Streamlit console (a second terminal)
 
 ```bash
 cd console
@@ -545,11 +598,11 @@ pip install -r requirements.txt
 streamlit run officer_app.py
 ```
 
-It opens in your browser (normally at `http://localhost:8501`).
+It opens in your browser (normally at `http://localhost:8501`). It is the earlier dashboard, kept as a fallback.
 
-### 3. Send in some cards
+### 3. Send in cards by hand
 
-Without Clario, post cards by hand from a third terminal.
+Without Clario or the customer app, post cards from another terminal.
 
 ```bash
 # Priya: $89 charge she didn't make, card already locked. 55, P3
@@ -571,8 +624,8 @@ carries it out**. More examples are in [`backend/README.md`](backend/README.md).
 
 ### Starting over
 
-Cases are saved, so restarting the backend does **not** clear the queue. Press **Reset demo data** in the dashboard
-sidebar, or:
+Cases are saved, so restarting the backend does **not** clear the queue. Press **Reset demo** on the dashboard or the
+demo page, or:
 
 ```bash
 curl -X POST localhost:8000/admin/reset
@@ -627,7 +680,7 @@ card is updated and its reference returned (gate G6).
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/webhook/retell` | Receives a card from Clario; Prorio scores it and drafts a proposal; short reply with band, `handoff` and caller message |
+| POST | `/webhook/retell` | Receives a card from Clario; Prorio scores it and drafts a proposal; short reply with band, `handoff` and caller message. With `case_reference` and `correction`, records the customer's correction on their open card |
 | POST | `/case` | Same as above, for posting cards by hand; returns the full card |
 | GET | `/queue` | The priority list: open cases, most urgent first, with reasons and current waiting time |
 | GET | `/case/{id}` | One full card, including Prorio's proposal and trace |
@@ -645,7 +698,9 @@ card is updated and its reference returned (gate G6).
 | GET | `/suggestions` | Protocol suggestions from officers' Modify and Manual decisions |
 | POST | `/suggestions/{id}/approve` | Protocol owner approves (only once it has been suggested enough times); creates a new version |
 | POST | `/suggestions/{id}/reject` | Protocol owner rejects |
-| GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, demo clock |
+| GET | `/meta` | Fixed lists for the dashboard: actions, bands, issue types, signal labels, demo clock |
+| GET | `/clario/{customer_id}/lookup` | Clario's read-only look-up for the signed-in customer: first name, masked accounts, card delivery, payees, recent transactions. No balances |
+| GET | `/demo`, `/officer`, `/customer` | The web pages (files in `web/`) |
 | POST | `/admin/reset` | Clears all cases, demo account changes, suggestions and approved versions (no password; demo only) |
 
 Errors: `404` not found, `409` already decided or not ready, `422` invalid request (unknown issue, missing reason, an
@@ -680,6 +735,7 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 | `NRY_WEBHOOK_SECRET` | none (open) | Backend | If set, `/webhook/retell` and `/case` need this value in an `x-webhook-secret` header |
 | `NRY_NOW` | `2026-11-15T12:00:00Z` | Backend | The demo clock for account evidence. `real` uses the real clock |
 | `NRY_SUGGEST_THRESHOLD` | `3` | Backend | How many times a protocol suggestion must be made before the owner can approve it. Set `1` for a quick demo |
+| `NRY_CORS_ORIGINS` | none | Backend | Comma-separated web origins allowed to call the API from a browser. Not needed: the pages are served by the backend itself |
 
 ---
 
@@ -722,8 +778,13 @@ Team-Astars/
 │   ├── test_api.py  test_db.py
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
+├── web/                  the web pages, served by the backend
+│   ├── demo.html         side by side: customer app and officer dashboard
+│   ├── officer.html      the officer dashboard
+│   ├── customer.html     the customer app (Clario and the glass-box card)
+│   └── static/           app.css, dom.js (safe DOM helper), officer.js, customer.js, demo.js
 └── console/
-    ├── officer_app.py    the officer dashboard
+    ├── officer_app.py    the earlier Streamlit dashboard (fallback)
     └── requirements.txt
 ```
 
@@ -746,8 +807,13 @@ the Westpac knowledge base; the AI never moves money; "talk to a person" is alwa
 ## Known limits and future work
 
 - **No log-in on the backend or dashboard.** Anyone who can reach the backend can read the queue and make decisions,
-  and the reset endpoint has no password. Fine on one laptop, not on a shared network. CORS is also wide open for the
-  demo.
+  and the reset endpoint has no password. Fine on one laptop, not on a shared network: keep the default `localhost`
+  unless a phone needs to connect over your own hotspot.
+- **What is protected.** The pages send a strict Content Security Policy (scripts, styles and data only from this
+  server, no inline code, no framing by other sites), and every piece of customer text is rendered as plain text, never
+  as HTML, so a card can't inject script. Browser cross-origin access is off unless `NRY_CORS_ORIGINS` is set.
+- **The Vietnamese lines** in Minh's scene were written for the demo; have a native speaker check them before
+  recording.
 - **The queue refreshes by polling every 2 seconds**, not by push.
 - **One machine, one process.** SQLite with a single connection suits a demo, not production.
 - **Demo dates.** Sample transactions are dated 9 to 15 November 2026. Scoring uses a fixed demo clock (`NRY_NOW`), so

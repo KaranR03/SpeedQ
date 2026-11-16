@@ -9,7 +9,7 @@ import mock_data as md
 from models import RetellPayload
 from prorio import agent, learning, protocols
 from prorio.propose import ACTIONS
-from prorio.score import EXECUTOR, band_for
+from prorio.score import BAND_LABEL, EXECUTOR, band_for
 
 CASES = {}  # case_id -> case dict (created_at kept as datetime, serialised on the way out)
 QUEUE_STATUSES = {"QUEUED", "AWAITING_CUSTOMER_CONFIRM", "IN_REVIEW"}
@@ -74,6 +74,7 @@ def rescore(case, now=None):
     ov = case.get("_override")  # officer re-rank (gate G5) pins the score; the reason stays visible
     if ov:
         pr["score"], pr["band"] = ov["score"], band_for(ov["score"])
+        pr["band_label"] = BAND_LABEL[pr["band"]]
         pr["executor"] = EXECUTOR[pr["band"]]
         pr["reasons"].append(f"Manually re-ranked by {ov['actor']}: {ov['reason']}")
         pr["gates"].append("G5_OFFICER_OVERRIDE")
@@ -142,6 +143,7 @@ def create_case(p: RetellPayload):
             "officer_decision": None,
             "outcome": None,
             "contacts": 1,
+            "customer_corrections": [],
             "audit_log": [],
             "_caller_signals": _split(p.risk_signals),
         }
@@ -169,12 +171,19 @@ def _update_repeat(case, p, linked, clario):
     for k in ("safeblock_activated", "card_locked"):
         case["clario_reported"][k] = case["clario_reported"][k] or getattr(p, k)
     case["retell_estimate"] = clario
-    case["contacts"] = case.get("contacts", 1) + 1
-    _draft(case)
-    _audit(case, "AI (Prorio)", "REPEAT_CONTACT", before=before,
-           after={"score": case["priority"]["score"], "band": case["priority"]["band"]},
-           result=f"Customer contacted again about the same issue (contact {case['contacts']}); card updated, "
-                  f"not duplicated")
+    case["customer_confirmed"] = case["customer_confirmed"] or p.customer_confirmed
+    after = lambda: {"score": case["priority"]["score"], "band": case["priority"]["band"]}
+    if p.correction:  # glass-box card: the customer corrected their own card through Clario
+        case.setdefault("customer_corrections", []).append({"ts": _now_str(), "text": p.correction[:500]})
+        _draft(case)
+        _audit(case, "Customer (via Clario)", "CUSTOMER_CORRECTION", before=before, after=after(),
+               result=f"Customer corrected the card: {p.correction[:500]}")
+    else:
+        case["contacts"] = case.get("contacts", 1) + 1
+        _draft(case)
+        _audit(case, "AI (Prorio)", "REPEAT_CONTACT", before=before, after=after(),
+               result=f"Customer contacted again about the same issue (contact {case['contacts']}); card updated, "
+                      f"not duplicated")
     db.save_case(case)
     case["_updated_existing"] = True  # read (and removed) by the webhook reply; never saved
     return case
@@ -342,7 +351,7 @@ def customer_view(case):
     return {"case_reference": case["case_id"], "issue_type": case["issue_type"], "summary": case["summary_en"],
             "summary_customer_lang": case["summary_customer_lang"], "status": case["card_status"]["label"],
             "stage": case["card_status"]["stage"], "history": case["card_status"]["history"],
-            "outcome": case["outcome"]}
+            "outcome": case["outcome"], "corrections": case.get("customer_corrections", [])}
 
 
 def queue():

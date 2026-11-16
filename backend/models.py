@@ -73,3 +73,4 @@ class RetellPayload(BaseModel):
     card_locked: bool = False       # the customer locked their card during the conversation
     case_reference: str = ""
     customer_sentiment: str = ""
+    correction: str = ""            # the customer corrected or added to their card (glass-box card); logged, never ranked on
