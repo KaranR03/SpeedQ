@@ -184,8 +184,10 @@ def case_view(case_id):
 
     proto = prop["protocol"]
     st.subheader("Proposed solution")
-    st.write(f"Protocol **{proto['title']}** · v{proto['version']}"
-             + (f" · updated by officers ({len(proto['change_log'])} change)" if proto["change_log"] else ""))
+    st.write(f"Protocol **{proto['title']}** · v{proto['version']}")
+    if proto["change_log"]:
+        last = proto["change_log"][-1]
+        st.caption(f"Changed in v{last['version']}: {last['change']} ({last.get('by', '')})")
     who = ("The AI carries these out after you approve" if prop["executor"] == "AI_AFTER_APPROVAL"
            else "You (the officer) carry these out")
     st.write(f"**Actions** · {who}")

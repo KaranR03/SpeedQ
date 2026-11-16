@@ -84,9 +84,18 @@ def main():
         "HARDSHIP", "CUST-002", [], ["ESSENTIALS_AT_RISK"]), 40, "P3")
     sam = check("Sam: card delivery, not satisfied", card("CARD_DELIVERY", "CUST-002"), 5, "P4")
     assert sam[0]["executor"] == "AI_AFTER_APPROVAL"
+    # protocol: a replacement only once the card is past its expected date (19 Nov)
+    assert [a["action"] for a in sam[1]["actions"]] == ["SEND_CUSTOMER_UPDATE"]
+    assert any("still due by 19 Nov 2026" in t for t in sam[1]["officer_tasks"])
+    late = agent.draft(card("CARD_DELIVERY", "CUST-002"), 0, (), md.parse_ts("2026-11-21T09:00:00Z"))[1]
+    assert [a["action"] for a in late["actions"]] == ["ORDER_REPLACEMENT_CARD", "SEND_CUSTOMER_UPDATE"]
     assert "12 Nov 2026" in sam[1]["customer_message"] and "19 Nov 2026" in sam[1]["customer_message"]
     check("Please change my address (G3 floor)", card("DETAILS_CHANGE", "CUST-002"), 40, "P3")
     check("Family violence (safety floor P2)", card("FAMILY_VIOLENCE_FINANCIAL_ABUSE", "CUST-002"), 60, "P2")
+    check("Daughter to help with my banking (G3)", card("TRUSTED_PERSON_ACCESS", "CUST-002"), 40, "P3")
+    check("Son keeps taking my money, scared to say no (G7)", card(
+        "ELDER_FINANCIAL_ABUSE", "CUST-002", [], ["VULNERABILITY_CUES"]), 60, "P2")
+    check("Is this text really from Westpac? (nothing at risk)", card("VERIFY_CONTACT", "CUST-002"), 0, "P4")
 
     print("Rules:")
     gamed = run(card("SCAM_IN_PROGRESS", "CUST-002", ["TX-9001"]))[0]

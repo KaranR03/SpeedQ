@@ -47,8 +47,9 @@ def get(issue_type):
         p["ai_may"] = list(ov["ai_may"])
         if ov.get("note"):
             p["notes"] = (p.get("notes") or "") + f" [v{ov['version']}] {ov['note']}"
-        p["change_log"].append({k: ov[k] for k in ("version", "change", "approved_by", "approved_at",
-                                                   "suggestion_id", "from_version")})
+        p["change_log"].append({"by": f"{ov['approved_by']} (protocol owner), {ov['approved_at'][:10]}",
+                                **{k: ov[k] for k in ("version", "change", "approved_by", "approved_at",
+                                                      "suggestion_id", "from_version")}})
     return p
 
 

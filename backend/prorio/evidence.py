@@ -42,7 +42,7 @@ def gather(customer_id, linked_ids, now, other_cases=()):
     """
     cust = md.get_customer(customer_id)
     ev = {"customer_found": bool(cust), "signals": {}, "own": [], "ignored": [], "recoverable": [],
-          "first_seen_merchant": None, "account": {}}
+          "first_seen_merchant": None, "account": {}, "as_of": now}
     if not cust:
         return ev
     history = [t for t in md.TRANSACTIONS.values() if t["customer_id"] == customer_id]

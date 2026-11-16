@@ -36,6 +36,11 @@ def parse_ai_may(item):
     return m.group(1), note
 
 
+def _nice(day):
+    """'2026-11-19' -> '19 Nov 2026'."""
+    return md.parse_ts(day + "T00:00:00Z").strftime("%-d %b %Y") if day else None
+
+
 def _fill(template, values):
     """Fill {placeholders} we know; leave the rest visible as [placeholder] for the officer to complete."""
     missing = []
@@ -84,15 +89,21 @@ def draft(card, protocol, priority, ev):
                 continue
             actions.append({**base, "params": {"transaction_id": pick[0]["id"]}})
             continue
+        if name == "ORDER_REPLACEMENT_CARD" and card["issue_type"] == "CARD_DELIVERY":
+            # protocol step: only replace a card that is past its expected date
+            due = md.get_card_delivery_status(card["customer_id"]) or {}
+            if due.get("expected") and ev["as_of"] <= md.parse_ts(due["expected"] + "T23:59:59Z"):
+                tasks.append(f"Not yet: the card is still due by {_nice(due['expected'])}. Prepare a replacement "
+                             f"only once it is past that date")
+                continue
         params = {"when": "tomorrow 10:00"} if name == "BOOK_CALLBACK" else {}
         actions.append({**base, "params": params})
     tasks += [f"Officer must: {x}" for x in protocol.get("officer_must", [])]
 
     srcs = protocols.sources_for(protocol)
     delivery = md.get_card_delivery_status(card["customer_id"]) or {}
-    nice = lambda d: md.parse_ts(d + "T00:00:00Z").strftime("%-d %b %Y") if d else None
-    values = {"case_id": card["case_id"], "dispatched": nice(delivery.get("dispatched")),
-              "expected": nice(delivery.get("expected")),
+    values = {"case_id": card["case_id"], "dispatched": _nice(delivery.get("dispatched")),
+              "expected": _nice(delivery.get("expected")),
               "trace_or_recall": "payment trace" if card["issue_type"] == "MONEY_MISSING" else None,
               "steps_link": srcs[0]["url"] if srcs else None, "source_url": srcs[0]["url"] if srcs else None}
     message, missing = _fill(protocol.get("customer_message", ""), values)
