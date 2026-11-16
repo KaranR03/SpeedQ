@@ -57,7 +57,7 @@ actors come from the server identity, not a caller's chosen name. Use HTTPS and 
 The voice webhook and secret-based case intake use `NRY_WEBHOOK_SECRET`; remote intake and protected staff mode
 refuse intake when that secret is missing. Host validation and same-origin checks reject unsolicited browser writes.
 
-Before a production pilot, replace the shared Basic account with organisation SSO, distinct officer/protocol-owner
+Before a production pilot, replace prototype Basic accounts with organisation SSO, distinct officer/protocol-owner
 permissions, session lifecycle controls and operational monitoring. SQLite and process-local state still target a
 single-process demonstration. This change does not connect to real banking systems or turn simulated actions into
 real operations.
@@ -85,3 +85,20 @@ through an explicit staff action and contains no account balances or full accoun
 The same origin, strict CSP and text-node rendering apply to the new SVG charts, context and handoff text. There are
 no external chart libraries or analytics trackers. New data endpoints require the same access controls as the queue.
 See `FEATURE_REVIEW.md` for the source inventory, implemented choices and prerequisites for future ideas.
+
+## Shared ownership and live intake
+
+The queue is a team view. A server-enforced claim identifies the responsible officer, **Mine** filters active assigned
+work, and release leaves an audit note before another officer claims it. A case revision accompanies website decisions;
+updates invalidate open approval dialogs rather than silently replacing their contents. Other officers see read-only
+case controls, named completion and updated counts through a same-origin event stream, with backup refresh on failure.
+
+Unconfirmed cards live in a separate draft store and **Live intake** view. Facts arrive from the customer demo at the
+point they are collected, with backend-derived signals kept separate from caller reports. No score or executable plan
+appears until confirmation. The intake handoff then follows the real queued, assigned and completed case. The scripted
+customer demo is labelled; this does not claim a new live language-model or Retell progress integration.
+
+Local demo identities are per-tab simulations. Configured Basic accounts have distinct server-derived identities;
+neither body-supplied names nor demo headers override them. Claims and draft revisions survive a restart. The deployment
+remains single-worker until database coordination and event transport are shared across processes. See
+`COLLABORATION_PLAN.md` for the walkthrough and delivery scope.

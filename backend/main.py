@@ -4,18 +4,22 @@ Run: uvicorn main:app --reload --port 8000
 """
 import hmac
 import os
+import asyncio
+import json
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 import mock_data as md
 import store
 import workspace_insights
-from web_security import actor, browser_security
-from models import Decision, OfficerNote, OwnerDecision, Rerank, RetellPayload
+import workspace_events
+import intake_drafts
+from web_security import actor, auth_enabled, browser_security, DEMO_OFFICERS
+from models import Decision, OfficerNote, OwnerDecision, Rerank, RetellPayload, DraftStart, DraftUpdate, DraftConfirm, DraftRevision
 from prorio import evidence, learning, protocols
 from prorio.propose import ACTIONS, ACTION_TEXT
 from prorio.score import BAND_LABEL, BAND_MESSAGE, FIRST_SEEN, HANDOFF
@@ -26,7 +30,7 @@ _origins = [origin.strip() for origin in os.environ.get("NRY_CORS_ORIGINS", "").
             if origin.strip() and origin.strip() != "*"]
 if _origins:
     app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_methods=["GET", "POST"],
-                       allow_headers=["content-type", "x-webhook-secret", "authorization"])
+                       allow_headers=["content-type", "x-webhook-secret", "authorization", "x-demo-officer"])
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=[
     h.strip() for h in os.environ.get("NRY_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1],testserver").split(",")
     if h.strip()
@@ -38,7 +42,7 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 @app.get("/assets/{filename}", include_in_schema=False)
 def frontend_asset(filename: str):
     # Do not expose tests, package manifests, reports or node_modules as web assets.
-    if filename not in {"app.js", "visuals.js", "insights.css", "styles.css", "beacon.svg", "docs.js"}:
+    if filename not in {"app.js", "visuals.js", "intake.js", "collaboration.css", "insights.css", "styles.css", "beacon.svg", "docs.js"}:
         raise HTTPException(404, "asset not found")
     return FileResponse(FRONTEND / filename)
 
@@ -60,8 +64,31 @@ def api_reference_redirect():
 
 @app.get("/workspace/session")
 def workspace_session(request: Request):
-    return {"officer": request.state.staff_actor, "authenticated": bool(os.environ.get("NRY_STAFF_PASSWORD")),
-            "demo": not bool(os.environ.get("NRY_STAFF_PASSWORD"))}
+    return {"officer": request.state.staff_actor, "authenticated": auth_enabled(), "demo": not auth_enabled(),
+            "available_officers": list(dict.fromkeys((request.state.staff_actor, *DEMO_OFFICERS))) if not auth_enabled() else []}
+
+
+@app.get("/workspace/intake")
+def workspace_intake():
+    return intake_drafts.listing()
+
+
+@app.get("/workspace/events")
+async def workspace_event_stream(request: Request):
+    async def changes():
+        previous = None
+        heartbeat = asyncio.get_running_loop().time()
+        while not await request.is_disconnected():
+            current = workspace_events.version()
+            now = asyncio.get_running_loop().time()
+            if current != previous:
+                yield f"event: workspace\nid: {current}\ndata: {json.dumps({'revision': current})}\n\n"
+                previous, heartbeat = current, now
+            elif now - heartbeat >= 15:
+                yield ": heartbeat\n\n"
+                heartbeat = now
+            await asyncio.sleep(0.5)
+    return StreamingResponse(changes(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
 
 @app.get("/workspace/cases")
@@ -95,7 +122,7 @@ def _check_secret(request: Request, x_webhook_secret: str = Header(default="")):
     """Remote intake always requires a secret; local demo intake may remain open."""
     secret = os.environ.get("NRY_WEBHOOK_SECRET", "")
     local = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
-    if (os.environ.get("NRY_STAFF_PASSWORD") or not local) and not secret:
+    if (auth_enabled() or not local) and not secret:
         raise HTTPException(503, "Configure NRY_WEBHOOK_SECRET before enabling remote or authenticated intake.")
     if secret and not hmac.compare_digest(x_webhook_secret.encode(), secret.encode()):
         raise HTTPException(401, "missing or wrong x-webhook-secret")
@@ -109,6 +136,31 @@ def _case(case_id):
 
 
 # ---- Intake from Clario -------------------------------------------------------------------------------------
+
+@app.post("/intake/drafts", dependencies=[Depends(_check_secret)])
+def start_draft(body: DraftStart):
+    return _errors(intake_drafts.start, body.customer_id)
+
+
+@app.get("/intake/drafts/{draft_id}")
+def get_draft(draft_id: str):
+    with store._lock:
+        return intake_drafts.public(_errors(intake_drafts._get, draft_id))
+
+
+@app.post("/intake/drafts/{draft_id}", dependencies=[Depends(_check_secret)])
+def update_draft(draft_id: str, body: DraftUpdate):
+    return _errors(intake_drafts.update, draft_id, body)
+
+
+@app.post("/intake/drafts/{draft_id}/confirm", dependencies=[Depends(_check_secret)])
+def confirm_draft(draft_id: str, body: DraftConfirm):
+    return _errors(intake_drafts.confirm, draft_id, body)
+
+
+@app.post("/intake/drafts/{draft_id}/cancel", dependencies=[Depends(_check_secret)])
+def cancel_draft(draft_id: str, body: DraftRevision):
+    return _errors(intake_drafts.cancel, draft_id, body.expected_revision)
 
 @app.post("/webhook/retell", dependencies=[Depends(_check_secret)])
 def webhook_retell(payload: RetellPayload):
@@ -164,23 +216,28 @@ def get_status(case_id: str):
 
 @app.post("/case/{case_id}/pickup")
 def post_pickup(case_id: str, body: OfficerNote, request: Request):
-    return store.public(_errors(store.pick_up, case_id, actor(request, body.officer)))
+    return store.public(_errors(store.pick_up, case_id, actor(request, body.officer), body.expected_revision))
+
+
+@app.post("/case/{case_id}/release")
+def release_case(case_id: str, body: OfficerNote, request: Request):
+    return store.public(_errors(store.release, case_id, actor(request, body.officer), body.note, body.expected_revision))
 
 
 @app.post("/case/{case_id}/decision")
 def post_decision(case_id: str, body: Decision, request: Request):
     return store.public(_errors(store.decide, case_id, body.decision, body.actions, actor(request, body.officer), body.note,
-                                body.suggest_update))
+                                body.suggest_update, body.expected_revision))
 
 
 @app.post("/case/{case_id}/complete")
 def post_complete(case_id: str, body: OfficerNote, request: Request):
-    return store.public(_errors(store.complete, case_id, actor(request, body.officer), body.note))
+    return store.public(_errors(store.complete, case_id, actor(request, body.officer), body.note, body.expected_revision))
 
 
 @app.post("/case/{case_id}/rerank")
 def post_rerank(case_id: str, body: Rerank, request: Request):
-    return store.public(_errors(store.rerank, case_id, body.band, body.score, body.reason, actor(request, body.officer)))
+    return store.public(_errors(store.rerank, case_id, body.band, body.score, body.reason, actor(request, body.officer), body.expected_revision))
 
 
 @app.get("/audit/{case_id}")
@@ -232,7 +289,7 @@ def post_reject(sid: str, body: OwnerDecision, request: Request):
 @app.post("/demo/seed")
 def seed_demo():
     """Add a small synthetic queue, preserving all existing cases and decisions."""
-    if os.environ.get("NRY_STAFF_PASSWORD"):
+    if auth_enabled():
         raise HTTPException(403, "Sample loading is available only in local demo mode.")
     samples = [
         {"customer_id": "CUST-001", "customer_name": "Maria R.", "issue_type": "SCAM_IN_PROGRESS",

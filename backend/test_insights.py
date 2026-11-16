@@ -18,7 +18,7 @@ NOW = datetime(2026, 11, 17, 1, tzinfo=timezone.utc)
 
 class InsightsTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"NRY_STAFF_PASSWORD": "", "NRY_WEBHOOK_SECRET": "",
+        self.env = patch.dict(os.environ, {"NRY_STAFF_PASSWORD": "", "NRY_STAFF_ACCOUNTS":"", "NRY_WEBHOOK_SECRET": "",
                                           "NRY_NOW": "2026-11-15T12:00:00Z"})
         self.env.start()
         self.clock = patch.object(md, "utcnow", return_value=NOW)
@@ -83,7 +83,7 @@ class InsightsTests(unittest.TestCase):
         data = self.summary()
         self.assertEqual([s["count"] for s in data["stages"]], [4, 0, 1, 0])
         self.assertEqual(data["active"], 5)
-        self.client.post("/case/DEMO-0416/complete", json={"note": "Delivery date confirmed."})
+        self.client.post("/case/DEMO-0416/complete", json={"note": "Delivery date confirmed.", "officer":"tester"})
         data = self.summary()
         self.assertEqual([s["count"] for s in data["stages"]], [4, 0, 0, 1])
         self.assertEqual(data["active"], 4)

@@ -4,7 +4,7 @@
 // ranks it, and "My card" polls the customer's real status. ?track=WGM-0412 shows only the live card (for Retell calls).
 import { $, api, h, sleep, toast, tracker } from "./dom.js";
 
-const S = { running: false, cid: null, ref: null, flags: {}, t0: 0, poll: null, lang: "en", speed: 1, outcomeShown: false };
+const S = { running: false, cid: null, ref: null, draft: null, flags: {}, t0: 0, poll: null, lang: "en", speed: 1, outcomeShown: false };
 const embedded = window.parent !== window;
 const tell = (msg) => { if (embedded) window.parent.postMessage(msg, location.origin); };
 const chat = () => $("#chat");
@@ -51,7 +51,13 @@ async function faceId(what) {
   ov.remove();
 }
 
-function readback(title, text, gloss) {
+async function publish(fields) {
+  if (!S.draft || S.draft.status !== "DRAFT") return;
+  S.draft = await api(`/intake/drafts/${S.draft.draft_id}`, {expected_revision:S.draft.revision,...fields});
+}
+
+async function readback(title, text, gloss) {
+  await publish({summary_en:gloss || text,summary_customer_lang:gloss ? text : "",phase:"CONFIRMING"});
   add(h("div", { class: "readback" }, h("h2", { text: title }), text, gloss ? h("div", { class: "small muted", text: gloss }) : null));
 }
 
@@ -61,7 +67,17 @@ const day = (iso) => new Date(iso).toLocaleDateString("en-AU", { day: "numeric",
 
 async function submit(card) {
   const body = { customer_id: S.cid, customer_confirmed: true, ...S.flags, ...card };
-  const r = await api("/webhook/retell", body);
+  let r;
+  if (S.draft) {
+    await publish({issue_type:body.issue_type,summary_en:body.summary_en,
+      summary_customer_lang:body.summary_customer_lang || "", phase:"CONFIRMING",
+      linked_transactions:(body.linked_transactions || "").split(",").filter(Boolean),
+      risk_signals:(body.risk_signals || "").split(",").filter(Boolean),
+      safeblock_activated:body.safeblock_activated || false,card_locked:body.card_locked || false});
+    r = await api(`/intake/drafts/${S.draft.draft_id}/confirm`, {expected_revision:S.draft.revision,
+      customer_confirmed:true,case_reference:body.case_reference || ""});
+    S.draft.status = "SUBMITTED";
+  } else r = await api("/webhook/retell", body);
   S.ref = r.case_reference;
   tell({ type: "submitted", ref: S.ref });
   $("#cardTab").replaceChildren("My card", h("span", { class: "dot" }));
@@ -87,6 +103,8 @@ async function renderCard() {
       h("p", { class: "quote", text: st.summary_customer_lang || st.summary }),
       tracker(st.history),
       h("p", { class: "small", text: `${vi ? "Trạng thái" : "Status"}: ${st.status}` }),
+      st.assigned_officer ? h("p", {class:"small",text:`Officer: ${st.assigned_officer}`}) : null,
+      st.completed_by ? h("p", {class:"small",text:`Completed by ${st.completed_by}`}) : null,
       (st.corrections || []).map((x) => h("div", { class: "corr" }, h("b", { text: vi ? "Bạn đã thêm: " : "You added: " }), x.text)),
       st.outcome ? h("div", { class: "msg", text: st.outcome.message }) : null,
       h("button", { class: "btn", text: vi ? "Có gì sai hoặc thiếu? Nói với Clario" : "Something wrong or missing? Tell Clario", onclick: () => show("chat") }),
@@ -124,24 +142,27 @@ const SCENES = {
     await clario("Hi Maria, I'm Clario, Westpac's AI assistant. You're signed in, so no security questions. What's happening?");
     timerStart();
     await customer("A man from the bank's fraud team rang. He says my savings aren't safe and I must move them to a new account. I already sent some.");
+    await publish({issue_type:"SCAM_IN_PROGRESS",summary_en:"A caller claiming to be from the bank asked Maria to move savings. She reports having sent money.",risk_signals:["CUSTOMER_REPORTS_PRESSURE"],phase:"CHECKING"});
     await clario("Maria, please stop. Don't send any more money, and hang up on him. The bank will never ask you to move money to keep it safe.");
     await clario("I can turn on SafeBlock right now. It stops new payments and transfers straight away. Scheduled payments and money coming in keep working.");
     await choose(["Turn on SafeBlock", "Not now"], 0);
     await faceId("turn on SafeBlock");
     S.flags.safeblock_activated = true;
+    await publish({safeblock_activated:true});
     timerStop();
     await clario("SafeBlock is on. Two quick questions so the right person helps you. Is he still on the line?");
     await choose(["Yes, he's waiting", "No"], 0);
     const d = await lookup();
     const tx = d.recent_transactions.find((t) => t.amount < -1000);
     const payee = d.payees.find((p) => p.name === tx?.payee);
+    await publish({linked_transactions:[tx.id],risk_signals:["CUSTOMER_REPORTS_PRESSURE","VULNERABILITY_CUES"]});
     const hrs = tx && payee ? Math.round((Date.parse(tx.date) - Date.parse(payee.added_at)) / 3.6e6) : null;
     tool(`recent payments · ${money(tx.amount)} to ${tx.payee} on ${day(tx.date)}${hrs !== null ? ` · payee added ${hrs} h earlier` : ""}`);
     await clario(`I can see ${money(tx.amount)} to ${tx.payee} on ${day(tx.date)}. Is that the money he told you to move?`);
     await choose(["Yes, that's it"], 0);
     const summary = `Someone claiming to be from Westpac told me to move my savings. I sent ${money(tx.amount)} to ${tx.payee} and he's still on the line.`;
     await clario("Here's what I'll pass on, so you never have to repeat it. Is that right?");
-    readback("Your card", summary);
+    await readback("Your card", summary);
     await choose(["Yes, that's right", "Change something"], 0);
     const r = await submit({ customer_name: "Maria R.", issue_type: "SCAM_IN_PROGRESS", linked_transactions: tx.id,
       risk_signals: "CUSTOMER_REPORTS_PRESSURE,VULNERABILITY_CUES", summary_en: summary, case_reference: "WGM-0412" });
@@ -153,8 +174,10 @@ const SCENES = {
     caption("Priya sees a charge she doesn't recognise. Clario checks the facts before anything else.");
     await clario("Hi Priya, I'm Clario, Westpac's AI assistant. How can I help?");
     await customer("There's an $89 charge on my credit card I don't recognise.");
+    await publish({issue_type:"FRAUD_UNAUTHORISED",summary_en:"Priya reports an unrecognised $89 card charge.",phase:"CHECKING"});
     const d = await lookup();
     const tx = d.recent_transactions.find((t) => Math.abs(t.amount) === 89);
+    await publish({linked_transactions:[tx.id]});
     tool(`card transactions · ${tx.payee} ${money(tx.amount)} on ${day(tx.date)} · first time this merchant has charged you`);
     await clario(`It's from ${tx.payee}, ${money(tx.amount)} on ${day(tx.date)}, and it's the first time they've charged your card. Subscriptions sometimes show a different name. Do you recognise it?`);
     await choose(["No, that's not me", "Yes, I remember now"], 0);
@@ -162,9 +185,10 @@ const SCENES = {
     await choose(["Lock my card"], 0);
     await faceId("lock your card");
     S.flags.card_locked = true;
+    await publish({card_locked:true});
     await clario("Your card is locked. Here's what I'll pass on. Is that right?");
     const summary = `A ${money(tx.amount)} charge from ${tx.payee} on ${day(tx.date)} that I didn't make. I've locked my card.`;
-    readback("Your card", summary);
+    await readback("Your card", summary);
     await choose(["Yes, that's right"], 0);
     const r = await submit({ customer_name: "Priya S.", issue_type: "FRAUD_UNAUTHORISED", linked_transactions: tx.id, summary_en: summary });
     caption("Unauthorised charge, still recoverable: P3. The officer sees the merchant was never seen before.");
@@ -175,14 +199,16 @@ const SCENES = {
     caption("Minh speaks Vietnamese. The officer will read the same card in English.");
     await clario("Chào Minh, tôi là Clario, trợ lý AI của Westpac. Tôi có thể giúp gì cho bạn?", "Hi Minh, I'm Clario, Westpac's AI assistant. How can I help?");
     await customer("Tôi đã chuyển 650 đô tiền thuê nhà cho chủ nhà qua Osko, nhưng chủ nhà nói chưa nhận được.", "I sent $650 rent to my landlord by Osko, but the landlord says it hasn't arrived.");
+    await publish({issue_type:"MONEY_MISSING",summary_en:"Minh reports a $650 rent payment that has not reached his landlord.",phase:"CHECKING"});
     const d = await lookup();
     const tx = d.recent_transactions.find((t) => t.type === "osko");
+    await publish({linked_transactions:[tx.id]});
     tool(`payments · ${money(tx.amount)} Osko to ${tx.payee} on ${day(tx.date)} · status ${tx.status || "Sent"}`);
     await clario(`Tôi thấy khoản chuyển ${money(tx.amount)} cho ${tx.payee} ngày 13/11, trạng thái: đã gửi. Tôi sẽ chuyển cho nhân viên để tra soát. Đây là nội dung tôi sẽ ghi lại, bạn xem có đúng không?`,
       `I can see ${money(tx.amount)} to ${tx.payee} on 13 Nov, status: sent. I'll pass it to an officer to trace. Here's what I'll write down. Is that right?`);
     const vi = `Khoản chuyển 650 đô tiền thuê nhà cho ${tx.payee} qua Osko ngày 13/11 vẫn chưa đến tay chủ nhà.`;
     const en = `My $650 Osko rent payment to ${tx.payee} on 13 Nov hasn't reached my landlord.`;
-    readback("Hồ sơ của bạn", vi, en);
+    await readback("Hồ sơ của bạn", vi, en);
     await choose(["Đúng rồi"], 0, "That's right");
     const r = await submit({ customer_name: "Minh N.", issue_type: "MONEY_MISSING", language: "vi", language_label: "Vietnamese",
       linked_transactions: tx.id, summary_en: en, summary_customer_lang: vi });
@@ -200,6 +226,7 @@ const SCENES = {
     caption("Sam asks a routine question. Clario answers from his own data.");
     await clario("Hi Sam, I'm Clario, Westpac's AI assistant. How can I help?");
     await customer("When is my new card arriving?");
+    await publish({issue_type:"CARD_DELIVERY",summary_en:"Sam is asking when his replacement card will arrive.",phase:"CHECKING"});
     const c = (await lookup()).card_delivery;
     tool(`card delivery · ${c.card} ${c.mask} · ${c.status} · due ${day(c.expected)}`);
     await clario(`Your replacement ${c.card} ending ${c.mask.replace(/\D/g, "")} was sent on ${day(c.dispatched)} by ${c.carrier}. It's ${c.status.toLowerCase()} and should arrive by ${day(c.expected)}. You can use your digital card in the app until then.`);
@@ -208,7 +235,7 @@ const SCENES = {
     await customer("I fly out on the 18th. Can someone check it'll get here in time?");
     const summary = `My replacement card is due ${day(c.expected)} but I travel on 18 Nov. Please check it will arrive in time.`;
     await clario("Sure. Here's what I'll pass on. Is that right?");
-    readback("Your card", summary);
+    await readback("Your card", summary);
     await choose(["Yes, that's right"], 0);
     const r = await submit({ customer_name: "Sam T.", issue_type: "CARD_DELIVERY", status: "QUEUED", summary_en: summary });
     caption("Low risk, P4: Prorio has prepared the reply. One click from the officer and the AI sends it.");
@@ -224,9 +251,10 @@ const SCENES = {
       "A payment or charge", "Something else", "I'd rather not say"], 1);
     await clario("Thanks. Can you pay for essentials like food right now?");
     await choose(["No, I can't buy groceries", "Yes, I'm fine"], 0);
+    await publish({issue_type:"ACCOUNT_ACCESS",summary_en:"Jordan cannot access the account and says essentials are at risk.",risk_signals:["ESSENTIALS_AT_RISK"],phase:"CHECKING"});
     const summary = "I can't get into my account after a password change I didn't make, and I can't buy groceries.";
     await clario("Here's what I'll pass on. Is that right?");
-    readback("Your card", summary);
+    await readback("Your card", summary);
     await choose(["Yes, that's right"], 0);
     const r = await submit({ customer_name: "Jordan L.", issue_type: "ACCOUNT_ACCESS", risk_signals: "ESSENTIALS_AT_RISK", summary_en: summary });
     caption("Prorio finds a password change from a new device in the account data: a verified signal. P2.");
@@ -238,12 +266,21 @@ async function play(id) {
   const sc = SCENES[id];
   if (!sc) return;
   if (S.running) { toast("A conversation is already running."); return; }
-  Object.assign(S, { running: true, cid: sc.cid, ref: null, flags: {}, lang: sc.lang || "en", outcomeShown: false });
+  Object.assign(S, { running: true, cid: sc.cid, ref: null, draft: null, flags: {}, lang: sc.lang || "en", outcomeShown: false });
   clearInterval(S.poll);
   chat().replaceChildren(); $("#quick").replaceChildren(); $("#cardTab").replaceChildren("My card");
   $("#sim").textContent = `Demo customer: ${sc.label} · customer's lines are scripted, everything else is live`;
   show("chat");
-  try { await sc.run(); } catch (e) { add(h("div", { class: "banner err", text: `Something went wrong: ${e.message}` })); }
+  try {
+    S.draft = await api('/intake/drafts',{customer_id:S.cid});
+    tell({type:'draft_started',draft_id:S.draft.draft_id});
+    await sc.run();
+  } catch (e) {
+    add(h("div", { class: "banner err", text: `Something went wrong: ${e.message}` }));
+    if (S.draft?.status === 'DRAFT') {
+      await api(`/intake/drafts/${S.draft.draft_id}/cancel`,{expected_revision:S.draft.revision}).catch(()=>{});
+    }
+  }
   S.running = false;
   tell({ type: "done", id });
 }

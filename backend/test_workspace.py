@@ -12,7 +12,7 @@ import store
 
 class WorkspaceTests(unittest.TestCase):
     def setUp(self):
-        self.env = patch.dict(os.environ, {"NRY_STAFF_PASSWORD": "", "NRY_WEBHOOK_SECRET": ""})
+        self.env = patch.dict(os.environ, {"NRY_STAFF_PASSWORD": "", "NRY_STAFF_ACCOUNTS":"", "NRY_WEBHOOK_SECRET": ""})
         self.env.start()
         self.client = TestClient(app)
         store.reset()
@@ -54,7 +54,7 @@ class WorkspaceTests(unittest.TestCase):
         self.client.post("/case/DEMO-0416/decision", json={"decision": "MANUAL", "officer": "tester"})
         cases = self.client.get("/workspace/cases").json()
         self.assertTrue(any(c["status"] == "MANUAL" for c in cases))
-        self.client.post("/case/DEMO-0416/complete", json={"note": "Delivery date confirmed."})
+        self.client.post("/case/DEMO-0416/complete", json={"note": "Delivery date confirmed.", "officer":"tester"})
         self.assertTrue(any(c["stage"] == "DONE" for c in self.client.get("/workspace/cases").json()))
         self.assertEqual(self.client.post("/demo/seed").json(), {"added": 0})
 

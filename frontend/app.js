@@ -1,6 +1,7 @@
 /* Beacon Assist. No external scripts, analytics or rendering of data as HTML. */
 "use strict";
 import { createVisuals } from "/assets/visuals.js";
+import { createIntake } from "/assets/intake.js";
 
 const $ = (id) => document.getElementById(id);
 const state = {
@@ -26,6 +27,13 @@ const state = {
   context: null,
   detailTabVersion: 0,
   insightVersion: 0,
+  intake: { active_count: 0, drafts: [] },
+  intakeFingerprint: "",
+  refreshPending: false,
+  openingCase: false,
+  liveConnected: false,
+  lastRefresh: 0,
+  demoOfficer: sessionStorage.getItem("beacon-demo-officer") || "",
 };
 const names = {
   queue: "Priority queue",
@@ -35,6 +43,7 @@ const names = {
   learning: "Learning loop",
   detail: "Case workspace",
   insights: "Care insights",
+  intake: "Live intake",
 };
 const issues = {
   SCAM_IN_PROGRESS: "Scam in progress",
@@ -79,6 +88,8 @@ const initials = (name = "?") =>
     .join("")
     .toUpperCase();
 const casePath = (id) => `/case/${encodeURIComponent(id)}`;
+const ownedByOther = (c) =>
+  Boolean(c.assignment && c.assignment.officer !== state.session?.officer);
 
 // All API content becomes text nodes. Never use innerHTML or inline event handlers.
 function el(tag, attrs = {}, ...children) {
@@ -160,10 +171,11 @@ async function api(path, body) {
     method: body === undefined ? "GET" : "POST",
     credentials: "same-origin",
     cache: "no-store",
-    headers:
-      body === undefined
-        ? { Accept: "application/json" }
-        : { Accept: "application/json", "Content-Type": "application/json" },
+    headers: {
+      Accept: "application/json",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(state.demoOfficer ? { "x-demo-officer": state.demoOfficer } : {}),
+    },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     signal: AbortSignal.timeout(15000),
   });
@@ -172,9 +184,11 @@ async function api(path, body) {
     const detail = Array.isArray(error.detail)
       ? error.detail.map((x) => x.msg).join("; ")
       : error.detail;
-    throw new Error(
+    const errorObject = new Error(
       detail || `Request failed (${response.status}). Please try again.`,
     );
+    errorObject.status = response.status;
+    throw errorObject;
   }
   return response.json();
 }
@@ -203,7 +217,9 @@ function online(value) {
   $("connection-error").hidden = value;
   $("sync-dot").classList.toggle("offline", !value);
   $("sync-label").textContent = value
-    ? "Live · refreshes every 10s"
+    ? state.liveConnected
+      ? "Live · shared updates"
+      : "Live · backup refresh"
     : "Updates paused";
 }
 function renderStats() {
@@ -221,7 +237,12 @@ function renderStats() {
     ["P1", "P2"].includes(c.priority.band),
   ).length;
   $("next-case").disabled =
-    !state.online || !state.cases.some((c) => openStatuses.has(c.status));
+    !state.online ||
+    !state.cases.some((c) => openStatuses.has(c.status) && !ownedByOther(c));
+  $("intake-count").textContent = state.intake.active_count;
+  $("live-intake-shortcut").hidden = !state.intake.active_count;
+  $("live-intake-shortcut").textContent =
+    `${state.intake.active_count} ${state.intake.active_count === 1 ? "card" : "cards"} taking shape →`;
 }
 function visibleCases() {
   return state.cases.filter((c) => {
@@ -236,6 +257,11 @@ function visibleCases() {
     if (state.filter === "urgent" && !["P1", "P2"].includes(c.priority.band))
       return false;
     if (state.filter === "waiting" && (reviewing(c) || !active(c)))
+      return false;
+    if (
+      state.filter === "mine" &&
+      c.assignment?.officer !== state.session?.officer
+    )
       return false;
     if (state.band !== "all" && c.priority.band !== state.band) return false;
     const d = state.drilldown;
@@ -326,7 +352,15 @@ function renderRows() {
           icon("clock"),
           !active(c) ? "—" : waiting(c),
         ),
-        el("span", { class: "row-status" }, status),
+        el(
+          "span",
+          { class: "row-status" },
+          c.completed_by
+            ? `Completed · ${c.completed_by}`
+            : c.assignment
+              ? `With ${c.assignment.officer}`
+              : status,
+        ),
       ),
       el("td", {}, icon("chevron")),
     );
@@ -393,7 +427,11 @@ function renderOverview(c) {
   if (!actions.length)
     actions.push(el("li", {}, icon("person"), "Officer-led support"));
   const review = button(
-    c.card_status.stage === "DONE" ? "View outcome" : "Review case",
+    c.card_status.stage === "DONE"
+      ? "View outcome"
+      : ownedByOther(c)
+        ? "View case"
+        : "Review case",
     () => openCase(c.case_id),
     "button primary full",
   );
@@ -454,7 +492,9 @@ function renderOverview(c) {
         {},
         c.card_status.stage === "DONE"
           ? "Outcome and audit trail available"
-          : "Opening a review records your pickup",
+          : ownedByOther(c)
+            ? `${c.assignment.officer} is handling this case`
+            : "Opening a review claims the case for you",
       ),
     ),
   );
@@ -476,13 +516,40 @@ async function selectCase(id, interactive = false) {
     });
 }
 async function refresh() {
-  if (state.loading) return;
+  if (state.loading) {
+    state.refreshPending = true;
+    return;
+  }
   state.loading = true;
   try {
-    state.cases = await api("/workspace/cases");
+    const previous = new Map(state.cases.map((c) => [c.case_id, c]));
+    const [cases, intake] = await Promise.all([
+      api("/workspace/cases"),
+      api("/workspace/intake"),
+    ]);
+    state.cases = cases;
+    state.intake = intake;
+    state.lastRefresh = Date.now();
+    const completed = cases.filter(
+      (c) =>
+        previous.has(c.case_id) &&
+        previous.get(c.case_id).stage !== "DONE" &&
+        c.stage === "DONE" &&
+        c.completed_by &&
+        c.completed_by !== state.session?.officer,
+    );
+    if (completed.length)
+      toast(
+        completed.length === 1
+          ? `${completed[0].completed_by} completed ${completed[0].customer_name}'s case. Your workspace is updated.`
+          : `${completed.length} cases were completed by colleagues. Your workspace is updated.`,
+      );
     online(true);
     renderStats();
-    if (["queue", "review", "completed"].includes(state.view)) {
+    if (
+      ["queue", "review", "completed"].includes(state.view) &&
+      !state.openingCase
+    ) {
       renderRows();
       const cases = visibleCases();
       if (!cases.some((c) => c.case_id === state.selected)) {
@@ -493,6 +560,29 @@ async function refresh() {
       if (state.selected) await selectCase(state.selected);
       else renderOverview(null);
     } else if (state.view === "insights") await loadInsights();
+    else if (state.view === "intake") renderIntakeView();
+    else if (state.view === "detail" && state.detail && !state.openingCase) {
+      const latest = await api(casePath(state.detail.case_id));
+      const changed = latest.revision !== state.detail.revision;
+      if ($("action-dialog").open) {
+        if (changed) {
+          $("dialog-stale").hidden = false;
+          $("dialog-submit").disabled = true;
+        }
+      } else {
+        let context = state.context;
+        if (state.tab === "context")
+          context = await api(`${casePath(latest.case_id)}/context`);
+        if (
+          JSON.stringify(latest) !== JSON.stringify(state.detail) ||
+          JSON.stringify(context) !== JSON.stringify(state.context)
+        ) {
+          state.detail = latest;
+          state.context = context;
+          renderDetail();
+        }
+      }
+    }
   } catch (error) {
     online(false);
     renderStats();
@@ -500,6 +590,20 @@ async function refresh() {
       `Could not update your workspace. ${error.message} Displayed information may be out of date.`;
   } finally {
     state.loading = false;
+    if (state.refreshPending) {
+      state.refreshPending = false;
+      queueMicrotask(() => run(refresh));
+    }
+  }
+}
+function renderIntakeView() {
+  const fingerprint = JSON.stringify(state.intake);
+  if (
+    fingerprint !== state.intakeFingerprint ||
+    !$("intake-content").children.length
+  ) {
+    $("intake-content").replaceChildren(intakeRenderer(state.intake));
+    state.intakeFingerprint = fingerprint;
   }
 }
 function showView(view) {
@@ -510,6 +614,7 @@ function showView(view) {
     "library-view": view === "protocols",
     "learning-view": view === "learning",
     "insights-view": view === "insights",
+    "intake-view": view === "intake",
   })) {
     $(id).hidden = !visible;
   }
@@ -564,6 +669,9 @@ async function navigate(view) {
     renderRows();
     renderOverview(null);
     await refresh();
+  } else if (view === "intake") {
+    renderIntakeView();
+    await refresh();
   } else if (view === "insights") await loadInsights();
   else if (view === "protocols") {
     state.protocols = await api("/protocols");
@@ -592,22 +700,40 @@ async function refilter() {
 }
 async function openCase(id) {
   const version = ++state.selectionVersion;
-  let c = await api(casePath(id));
-  if (version !== state.selectionVersion) return;
-  if (openStatuses.has(c.status) && c.card_status.stage !== "WITH_OFFICER") {
-    c = await api(`${casePath(id)}/pickup`, { officer: state.session.officer });
+  state.openingCase = true;
+  try {
+    let c = await api(casePath(id));
+    if (version !== state.selectionVersion) return;
+    if (
+      (openStatuses.has(c.status) || c.status === "MANUAL") &&
+      c.card_status.stage !== "DONE" &&
+      !c.assignment
+    ) {
+      try {
+        c = await api(`${casePath(id)}/pickup`, {
+          officer: state.session.officer,
+          expected_revision: c.revision,
+        });
+      } catch (error) {
+        if (error.status !== 409) throw error;
+        c = await api(casePath(id));
+        toast(error.message, true);
+      }
+    }
+    if (version !== state.selectionVersion) return;
+    if (state.view !== "detail") state.returnView = state.view;
+    state.detail = c;
+    state.tab = "overview";
+    state.context = null;
+    ++state.detailTabVersion;
+    showView("detail");
+    renderDetail();
+    $("main").focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  } finally {
+    state.openingCase = false;
   }
-  if (version !== state.selectionVersion) return;
-  if (state.view !== "detail") state.returnView = state.view;
-  state.detail = c;
-  state.tab = "overview";
-  state.context = null;
-  ++state.detailTabVersion;
-  showView("detail");
-  renderDetail();
   await refresh();
-  $("main").focus({ preventScroll: true });
-  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function info(text) {
   return el("div", { class: "info-note" }, icon("info"), el("span", {}, text));
@@ -974,7 +1100,23 @@ function renderDetail() {
       bullets(p.required_checks),
     );
   const buttons = el("div", { class: "action-buttons" });
-  if (openStatuses.has(c.status)) {
+  if (!done && ownedByOther(c)) {
+    buttons.append(
+      el(
+        "div",
+        { class: "owner-readonly" },
+        `${c.assignment.officer} is handling this case. You can view the evidence; only the assigned officer can record a decision or release it.`,
+      ),
+    );
+  } else if (!done && !c.assignment) {
+    buttons.append(
+      button(
+        "Claim this case",
+        () => openCase(c.case_id),
+        "button primary full",
+      ),
+    );
+  } else if (openStatuses.has(c.status)) {
     const approve = button(
       "Review & approve",
       () => decisionDialog("APPROVE"),
@@ -1020,9 +1162,34 @@ function renderDetail() {
       "Prototype: all actions are simulated. Drafts never move money. Every decision is recorded.",
     ),
   );
+  const ownerBanner = el(
+    "div",
+    { class: `assignment-banner${ownedByOther(c) && !done ? " other" : ""}` },
+    el(
+      "span",
+      {},
+      icon("person"),
+      " ",
+      el(
+        "strong",
+        {},
+        done
+          ? `Completed by ${c.completed_by || "the team"}`
+          : c.assignment
+            ? `Assigned to ${c.assignment.officer}`
+            : "Unassigned · ready for an officer",
+      ),
+      !done && c.assignment?.claimed_at
+        ? ` · claimed ${time(c.assignment.claimed_at)}`
+        : "",
+    ),
+  );
+  if (!done && c.assignment && !ownedByOther(c))
+    ownerBanner.append(button("Release case", releaseDialog));
   $("detail-view").replaceChildren(
     back,
     heading,
+    ownerBanner,
     el(
       "div",
       { class: "detail-layout" },
@@ -1039,6 +1206,8 @@ function dialog(title, content, submitText, submit) {
     ...(Array.isArray(content) ? content : [content]),
   );
   $("dialog-error").hidden = true;
+  $("dialog-stale").hidden = true;
+  $("dialog-submit").disabled = false;
   $("dialog-submit").hidden = !submit;
   $("dialog-submit").textContent = submitText || "Confirm";
   $("dialog-cancel").textContent = submit ? "Cancel" : "Close";
@@ -1146,6 +1315,7 @@ function decisionDialog(decision) {
       const body = {
         decision,
         officer: state.session.officer,
+        expected_revision: c.revision,
         note: $("decision-note").value.trim(),
       };
       if (decision !== "APPROVE" && !body.note)
@@ -1208,6 +1378,7 @@ function rerankDialog() {
           band: $("new-band").value,
           reason,
           officer: state.session.officer,
+          expected_revision: c.revision,
         }),
         "Priority updated and reason recorded.",
       );
@@ -1234,8 +1405,34 @@ function completeDialog() {
         await api(`${casePath(c.case_id)}/complete`, {
           note,
           officer: state.session.officer,
+          expected_revision: c.revision,
         }),
         "Case completed. Customer outcome recorded.",
+      );
+    },
+  );
+}
+function releaseDialog() {
+  const c = state.detail;
+  dialog(
+    "Return this case to the team?",
+    [
+      el(
+        "p",
+        {},
+        "Your claim will be released so another officer can take over. Existing evidence, notes and manual work stay on the case.",
+      ),
+      ...textField("Handoff note (optional)", "release-note"),
+    ],
+    "Release to shared queue",
+    async () => {
+      await recorded(
+        await api(`${casePath(c.case_id)}/release`, {
+          officer: state.session.officer,
+          expected_revision: c.revision,
+          note: $("release-note").value.trim(),
+        }),
+        "Case released to the shared queue.",
       );
     },
   );
@@ -1244,7 +1441,9 @@ async function nextCase() {
   await refresh();
   if (!state.online)
     throw new Error("Reconnect before starting another review.");
-  const c = state.cases.find((x) => openStatuses.has(x.status));
+  const c = state.cases.find(
+    (x) => openStatuses.has(x.status) && !ownedByOther(x),
+  );
   if (c) await openCase(c.case_id);
   else {
     toast("No waiting cases. You’re all caught up.");
@@ -1593,6 +1792,7 @@ $("load-demo").addEventListener("click", () =>
 function closeDialog() {
   if (!state.dialogBusy) $("action-dialog").close();
 }
+$("action-dialog").addEventListener("close", () => run(refresh));
 $("dialog-close").addEventListener("click", closeDialog);
 $("dialog-cancel").addEventListener("click", closeDialog);
 $("action-dialog").addEventListener("cancel", (e) => {
@@ -1600,7 +1800,12 @@ $("action-dialog").addEventListener("cancel", (e) => {
 });
 $("action-form").addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (state.dialogBusy || !dialogSubmit || !$("action-form").reportValidity())
+  if (
+    state.dialogBusy ||
+    !dialogSubmit ||
+    !$("dialog-stale").hidden ||
+    !$("action-form").reportValidity()
+  )
     return;
   state.dialogBusy = true;
   $("dialog-submit").disabled = true;
@@ -1615,7 +1820,7 @@ $("action-form").addEventListener("submit", async (e) => {
     $("dialog-error").hidden = false;
   } finally {
     state.dialogBusy = false;
-    $("dialog-submit").disabled = false;
+    $("dialog-submit").disabled = !$("dialog-stale").hidden;
     $("dialog-close").disabled = false;
     $("dialog-cancel").disabled = false;
   }
@@ -1658,6 +1863,16 @@ async function init() {
       api("/meta"),
     ]);
     $("officer-name").textContent = state.session.officer;
+    $("demo-officer-control").hidden = !state.session.demo;
+    $("demo-officer-select").replaceChildren(
+      ...state.session.available_officers.map((name) =>
+        el(
+          "option",
+          { value: name, selected: name === state.session.officer },
+          `Demo: ${name}`,
+        ),
+      ),
+    );
     $("officer-avatar").textContent = initials(state.session.officer);
     $("access-label").textContent = state.session.authenticated
       ? "Authenticated staff session"
@@ -1665,6 +1880,7 @@ async function init() {
     $("load-demo").hidden = !state.session.demo || state.view !== "queue";
     $("load-demo").disabled = false;
     await refresh();
+    connectWorkspaceEvents();
   } catch (error) {
     online(false);
     $("connection-message").textContent =
@@ -1682,10 +1898,47 @@ $("today").textContent = new Intl.DateTimeFormat("en-AU", {
   .format(new Date())
   .toUpperCase();
 setMenu(false);
+function connectWorkspaceEvents() {
+  if (state.eventSource) state.eventSource.close();
+  const source = new EventSource("/workspace/events");
+  state.eventSource = source;
+  source.onopen = () => {
+    state.liveConnected = true;
+    online(state.online);
+  };
+  source.onerror = () => {
+    state.liveConnected = false;
+    online(state.online);
+  };
+  source.addEventListener("workspace", () => {
+    if (!document.hidden && state.session) run(refresh);
+  });
+}
+$("demo-officer-select").addEventListener("change", () =>
+  run(async () => {
+    state.demoOfficer = $("demo-officer-select").value;
+    sessionStorage.setItem("beacon-demo-officer", state.demoOfficer);
+    ++state.selectionVersion;
+    await init();
+    if (state.view === "detail" && state.detail) renderDetail();
+  }),
+);
+$("refresh-intake").addEventListener("click", () => run(refresh));
+$("live-intake-shortcut").addEventListener("click", () =>
+  run(() => navigate("intake")),
+);
+window.addEventListener("pagehide", () => state.eventSource?.close());
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && state.session) connectWorkspaceEvents();
+});
 setInterval(() => {
-  if (!document.hidden && !$("action-dialog").open && state.session)
+  if (
+    !document.hidden &&
+    state.session &&
+    Date.now() - state.lastRefresh >= (state.liveConnected ? 10000 : 2000)
+  )
     run(refresh);
-}, 10000);
+}, 2000);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && state.session) run(refresh);
 });
@@ -1700,9 +1953,33 @@ const visuals = createVisuals({
   openCase,
   filterFromInsight,
 });
+const intakeRenderer = createIntake({
+  el,
+  icon,
+  button,
+  avatar,
+  human,
+  issue,
+  time,
+  openCase,
+});
 window.addEventListener("message", (event) => {
-  if (window.parent === window || event.source !== window.parent || event.origin !== location.origin
-      || event.data?.type !== "select" || typeof event.data.id !== "string" || event.data.id.length > 200) return;
+  if (
+    window.parent === window ||
+    event.source !== window.parent ||
+    event.origin !== location.origin
+  )
+    return;
+  if (event.data?.type === "intake") {
+    run(() => navigate("intake"));
+    return;
+  }
+  if (
+    event.data?.type !== "select" ||
+    typeof event.data.id !== "string" ||
+    event.data.id.length > 200
+  )
+    return;
   run(async () => {
     await navigate("queue");
     await selectCase(event.data.id, true);

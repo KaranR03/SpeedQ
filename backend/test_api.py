@@ -6,6 +6,9 @@ import os
 from datetime import timedelta
 
 os.environ["NRY_DB"] = ":memory:"          # before the app imports db
+os.environ["NRY_STAFF_PASSWORD"] = ""
+os.environ["NRY_STAFF_ACCOUNTS"] = ""
+os.environ["NRY_WEBHOOK_SECRET"] = ""
 os.environ["NRY_SUGGEST_THRESHOLD"] = "2"  # small threshold so the loop can be tested quickly
 
 from fastapi.testclient import TestClient  # noqa: E402

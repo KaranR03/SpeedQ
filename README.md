@@ -572,6 +572,16 @@ for an explicit copy action; it does not send anything externally.
 
 See [the dataset and feature feasibility review](FEATURE_REVIEW.md) for sources, limitations and ideas worth deferring.
 
+**Shared care** adds exclusive officer claims, release with a handoff note, a **Mine** filter and live completion
+updates across sessions. In the local demo, use the header selector to simulate Alex Morgan and Taylor Lee in
+separate tabs. Another officer can inspect a claimed case but cannot act on it. The website submits the current case
+revision with decisions, preventing an old dialog from overwriting newer work.
+
+**Live intake** shows a customer card taking shape before confirmation: the developing need, matched payment records,
+verified signals and separately labelled conversation reports. Drafts are not ranked and do not count as queue cases.
+The `/demo` officer pane follows this building stage, then the ranked case after customer confirmation. See
+[the collaboration plan and walkthrough](COLLABORATION_PLAN.md).
+
 ### Customer app and side-by-side demo
 
 The customer app remains at `/customer`, case tracking at `/customer?track=<reference>`, and the recording view at
@@ -726,6 +736,13 @@ card is updated and its reference returned (gate G6).
 | GET | `/workspace/session` | Current staff identity and local demo status; never credentials |
 | GET | `/workspace/cases` | Compact active, manual and completed case list |
 | GET | `/workspace/insights` | Read-only analytics across saved cases; ownership-checked payment totals and live response watch |
+| GET | `/workspace/intake` | Active unranked drafts and the five latest confirmed handoffs |
+| GET | `/workspace/events` | Authenticated same-origin server-sent invalidations; clients re-fetch snapshots |
+| POST | `/intake/drafts` | Start a customer intake draft, separate from the ranked queue |
+| GET / POST | `/intake/drafts/{id}` | Read or update a draft using its expected revision |
+| POST | `/intake/drafts/{id}/confirm` | Confirm and submit a reviewed draft once; retries reuse its case |
+| POST | `/intake/drafts/{id}/cancel` | Cancel an unsubmitted draft using its expected revision |
+| POST | `/case/{id}/release` | Assigned officer returns active work to the shared queue with an optional note |
 | GET | `/case/{id}/context` | Masked records belonging to this case's customer, reported/verified protection and evidence-clock history |
 | POST | `/demo/seed` | Add synthetic examples once, preserving existing work; local demo mode only |
 | GET | `/clario/{customer_id}/lookup` | Clario's read-only look-up for the signed-in customer: first name, masked accounts, card delivery, payees, recent transactions. No balances |
@@ -768,16 +785,18 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 | `NRY_CORS_ORIGINS` | none | Backend | Comma-separated web origins allowed to call the API from a browser. Not needed: the pages are served by the backend itself |
 | `NRY_STAFF_PASSWORD` | unset | Backend / new website | Enables HTTP Basic staff authentication for the website, staff APIs, docs and administration. Use a strong secret and HTTPS for remote access; never commit it |
 | `NRY_STAFF_USER` | `officer` | Backend / new website | Staff username when password protection is enabled; this authenticated identity is used in audit records |
+| `NRY_STAFF_ACCOUNTS` | unset | Backend / new website | Secure JSON mapping of usernames to distinct passwords for prototype staff accounts. Takes precedence over the single account; invalid configuration fails closed. Never commit values |
 | `NRY_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1],testserver` | Backend | Comma-separated hostnames accepted by the server. Add the actual hostname when placing the application behind an HTTPS proxy; avoid wildcards |
 
-Without a staff password, staff access is restricted to loopback clients. Secret-authenticated intake can still be
+Without configured staff accounts or a staff password, staff access is restricted to loopback clients. Secret-authenticated intake can still be
 used by a server-to-server voice integration. Remote intake and intake in staff mode require `NRY_WEBHOOK_SECRET` to be
 configured; an unset secret fails closed. The browser never receives either secret. Cross-origin browser mutations
 are rejected unless their origin is explicitly trusted through `NRY_CORS_ORIGINS`; unrestricted CORS has been removed, and the website uses a strict self-only Content Security Policy,
 frame protection, no-store responses and text-only rendering of API data.
 
-This is still a single-account prototype, not production banking authentication: it has no SSO, per-officer accounts,
-role separation or session revocation. Use synthetic data only. See [the interface design and security notes](DESIGN.md).
+Distinct Basic accounts can be configured for prototype officers, but this is not production banking authentication:
+it has no SSO, MFA, protocol-owner role separation or session revocation. The local demo identity selector is hidden
+when authentication is enabled. Use synthetic data only. See [the interface design and security notes](DESIGN.md).
 
 ---
 
@@ -792,6 +811,7 @@ Run from the `backend` folder with its environment switched on.
 | `python test_db.py` | Restarts the backend for real and checks nothing was lost, including approved protocol versions |
 | `python test_workspace.py` | Website assets, local-only demo access, staff authentication, protected intake, audit identity, origin/host checks and additive sample loading |
 | `python test_insights.py` | Empty and populated analytics, payment deduplication, customer ownership, clocks, stages, response-watch boundaries and context access control |
+| `python test_collaboration.py` | Concurrent claims and decisions, transfers, stale revisions, authenticated identity, draft validation, retry safety and restart recovery |
 
 The API/workspace tests use an in-memory database; persistence checks use a temporary file. They never touch `nry.db`.
 
@@ -804,12 +824,14 @@ npm ci
 npm test
 ```
 
-The browser suite starts its own backend and temporary database, uses installed Chromium when available, and checks
+Both browser suites start their own backend and temporary database, use installed Chromium when available, and check
 the real UI: filtering, pickup, cancellation, approval, modified actions, manual outcomes, re-ranking, protocol changes,
 hostile content, connection failures, chart drill-downs, score caps, customer context, handoffs, responsive layouts and automated WCAG accessibility checks. Screenshots and
 accessibility reports (including checks requiring manual review) are written to ignored `frontend/test-results/`.
 Set `BEACON_CHROMIUM` to choose another Chromium executable, `BEACON_PYTHON` for the backend Python executable, or
 `BEACON_TEST_PORT` if its default port 8025 is occupied.
+The collaboration suite uses port 8026 (`BEACON_COLLAB_PORT` overrides it), two independent officer sessions and the
+actual customer scene. Its screenshots include live intake, mobile intake and the side-by-side forming-card view.
 
 ---
 
@@ -866,9 +888,11 @@ the Westpac knowledge base; the AI never moves money; "talk to a person" is alwa
 - **Prototype access control.** The new website supports optional staff authentication and otherwise restricts staff
   access to loopback clients. This is not production SSO or role-based banking access. The legacy Streamlit app is for
   local reference only. Reset is available through the protected API, not as a prominent website button.
-- **The new queue refreshes every 10 seconds**, pauses polling in background tabs and makes failed updates visible.
-  The legacy Streamlit queue polls every 2 seconds. Neither uses push.
-- **One machine, one process.** SQLite with a single connection suits a demo, not production.
+- **Shared updates use server-sent events.** Connected clients refresh age-based data every ten seconds; a two-second
+  backup refresh is used while reconnecting. Background tabs refresh when visible. The legacy Streamlit queue polls
+  every two seconds.
+- **One machine, one backend worker.** Claims and event invalidations use a process-local lock/counter and SQLite.
+  Production workers need shared transactional ownership and event transport.
 - **Demo dates.** Sample transactions are dated 9 to 15 November 2026. Scoring uses a fixed demo clock (`NRY_NOW`), so
   it is unaffected; the plain "recent transactions" look-up uses the real clock and comes back empty once the dates
   are old.

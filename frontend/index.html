@@ -12,6 +12,7 @@
     <link rel="icon" href="/assets/beacon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="stylesheet" href="/assets/insights.css" />
+    <link rel="stylesheet" href="/assets/collaboration.css" />
     <script src="/assets/app.js" type="module"></script>
   </head>
   <body>
@@ -110,6 +111,13 @@
             >0</span
           >
         </button>
+        <button class="nav-item" data-view="intake">
+          <svg class="icon"><use href="#i-spark" /></svg>Live intake<span
+            id="intake-count"
+            class="nav-count"
+            >0</span
+          >
+        </button>
         <button class="nav-item" data-view="insights">
           <svg class="icon"><use href="#i-chart" /></svg>Care insights
         </button>
@@ -174,6 +182,13 @@
           ><strong id="breadcrumb-current">Priority queue</strong>
         </div>
         <div class="topbar-right">
+          <label id="demo-officer-control" class="demo-officer-control" hidden
+            ><span class="sr-only">Demo officer identity for this tab</span
+            ><select
+              id="demo-officer-select"
+              aria-label="Demo officer identity"
+            ></select
+          ></label>
           <span class="prototype-label"
             >Prototype <span>·</span> Synthetic data</span
           >
@@ -199,6 +214,11 @@
           <div class="page-heading">
             <div>
               <div class="eyebrow" id="today"></div>
+              <button
+                id="live-intake-shortcut"
+                class="intake-shortcut"
+                hidden
+              ></button>
               <h1 id="page-title">
                 Priority queue<span class="heading-dot">.</span>
               </h1>
@@ -318,6 +338,13 @@
                 >
                   Waiting
                 </button>
+                <button
+                  data-filter="mine"
+                  class="filter-tab"
+                  aria-pressed="false"
+                >
+                  Mine
+                </button>
               </div>
               <div class="table-scroll">
                 <table class="case-table">
@@ -399,6 +426,34 @@
             <p class="case-summary">Loading your saved workspace…</p>
           </div>
         </section>
+        <section id="intake-view" hidden aria-labelledby="intake-title">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">THE HANDOFF STARTS BEFORE THE QUEUE</div>
+              <h1 id="intake-title">
+                A case taking shape<span class="heading-dot">.</span>
+              </h1>
+              <p>
+                Watch facts arrive, then follow the confirmed card into the
+                shared queue.
+              </p>
+            </div>
+            <button id="refresh-intake" class="button secondary">
+              <svg class="icon"><use href="#i-refresh" /></svg>Refresh intake
+            </button>
+          </div>
+          <div class="intake-explainer">
+            <svg class="icon"><use href="#i-shield" /></svg
+            ><span
+              >Drafts have no priority or executable plan. Customer confirmation
+              creates the ranked case. The current customer conversations are
+              scripted demos with real backend updates.</span
+            ><a href="/demo" target="_blank" rel="noopener"
+              >Open conversation demo</a
+            >
+          </div>
+          <div id="intake-content"></div>
+        </section>
         <section id="detail-view" hidden aria-label="Case workspace"></section>
         <section id="library-view" hidden aria-labelledby="library-title">
           <div class="page-heading">
@@ -463,6 +518,10 @@
       </div>
       <form id="action-form">
         <div id="dialog-body"></div>
+        <p id="dialog-stale" class="form-error" role="alert" hidden>
+          This case changed while you were reviewing it. Close this dialog and
+          review the latest version before continuing.
+        </p>
         <p id="dialog-error" class="form-error" role="alert" hidden></p>
         <div class="dialog-footer">
           <button id="dialog-cancel" type="button" class="button secondary">
