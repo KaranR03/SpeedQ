@@ -11,7 +11,7 @@ const AxeBuilder = require("@axe-core/playwright").default;
 const root = path.resolve(__dirname, "../..");
 const port = Number(process.env.BEACON_TEST_PORT || 8025);
 const base = `http://127.0.0.1:${port}`;
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), "beacon-browser-"));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "speedq-browser-"));
 const output = path.join(root, "frontend/test-results");
 let server, browser;
 let logs = "";
