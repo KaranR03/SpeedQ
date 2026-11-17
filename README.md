@@ -682,7 +682,8 @@ framing for the demo; other sites cannot frame them. The root `/` remains the st
 
 The selected format is a **narrated presentation-slide video**. Use the
 [slide sequence and production checklist](docs/video/SHOT_LIST.md) for the deck, screenshots, speaker notes and
-export. Its approximate six-minute target is a working plan; verify the actual competition limit and deadline.
+export. Follow the team's existing 15-slide [presentation script](docs/video/SCRIPT.md). Its approximate 7:15 target
+is a working plan; verify the actual competition limit and deadline.
 
 1. Build the deck in the team's preferred presentation editor. Use short labels and simple diagrams to explain the
    problem, confirmed card, evidence-based ranking, officer control and customer outcome.
@@ -1005,7 +1006,7 @@ actual customer scene. Its screenshots include live intake, mobile intake and th
 Team-Astars/
 ├── README.md             this file
 ├── BUILD.md              current build, setup and delivery guide
-├── docs/video/SHOT_LIST.md  presentation-slide sequence, narration and export checklist
+├── docs/video/          SHOT_LIST.md recording plan and SCRIPT.md team narration in the existing 15-slide order
 ├── backend/
 │   ├── main.py           the web service and its endpoints
 │   ├── prorio/           Prorio, the Priority and Protocol agent

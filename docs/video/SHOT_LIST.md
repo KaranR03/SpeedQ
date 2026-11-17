@@ -4,24 +4,28 @@ Team Astars is making the submission video from **presentation slides with recor
 slide diagrams and screenshots captured from this prototype. The deck and exported video are still to be produced;
 this document is the production plan.
 
-A working target is **about six minutes**, in 16:9. Confirm the competition's actual duration, submission format,
-deadline and upload rules before recording; this target is not a verified competition requirement.
+The team's existing **15-slide order and speaker allocation** are recorded in [SCRIPT.md](SCRIPT.md). Keep that
+structure rather than introducing another deck concept. The working target is **about 7:15**, including a roughly
+2:30 walkthrough, in 16:9. Confirm the actual competition duration, format, deadline and upload rules; the team's
+timing target is not a verified competition limit.
 
 ## Slide sequence
 
-| Slide | Target | What to show | Narration and evidence |
-|---|---:|---|---|
-| 1. The idea | 20 s | Westpac SpeedQ, Team Astars and one sentence: “Explain once. Reach the right person.” | Introduce the independent hackathon prototype and synthetic data. Apply the [brand-use guidance](../../BRANDING.md) to the logo. |
-| 2. The customer problem | 35 s | A simple journey diagram contrasting an urgent scam report with a card-delivery question | Explain why context and urgency matter. Label the journey illustrative; use no invented wait-time or savings figures. |
-| 3. How it works | 45 s | Customer → Clario → confirmed Customer Service Card → Prorio → officer → customer outcome | Clario collects the need; deterministic code ranks it from evidence and approved protocols. Explain where confirmation and human approval happen. |
-| 4. A card taking shape | 45 s | Two or three screenshots: customer conversation, unranked Live intake draft, confirmed card | Show what the customer can read and correct. Label captures from scripted scenes; distinguish them from a rehearsed live Retell session. |
-| 5. Priority with reasons | 45 s | Maria's urgent case and its evidence/score explanation; a small comparison with Sam's delivery question | Show the score and band actually displayed in the captured run. The score measures project priority, not AI confidence or predicted loss. |
-| 6. People stay in control | 55 s | Officer review/approval and outcome; a small second-officer ownership or completion screenshot | Explain Approve, Modify and Manual, claim protection, the audit trail and shared completion updates. Banking actions are simulated. |
-| 7. Useful insight and learning | 40 s | One Care insights chart and a protocol suggestion/version example | Charts describe saved cases. A human approves protocol changes. Do not describe chart counts as measured bank productivity or the learning loop as model retraining. |
-| 8. Delivery and next steps | 35 s | Implemented prototype, live rehearsal still required, team credits and the closing message | Summarise the user benefit, state what remains, and distinguish the working prototype from production deployment. |
+| Slides | What to show | Narration and evidence |
+|---|---|---|
+| 1. Westpac SpeedQ | Team Astars, the project name and the opening line | Introduce the independent prototype and synthetic data; apply [brand-use guidance](../../BRANDING.md). |
+| 2–3. The customer and officer problem | Maria/Sam journey and the loss of context across handoffs | Label the story illustrative; show no invented bank wait-time measurements. |
+| 4–5. Context and urgency | The problem statement and the need to understand severity | Use sourced evidence only where the actual source is verified; the script supplies narration without unsupported statistics. |
+| 6–7. Product and pipeline | Customer → Clario → confirmed card → Prorio → officer → outcome | Distinguish the conversational agent from deterministic ranking code. Prototype login and banking protection are simulated. |
+| 8–9. The card and priority queue | Read-back/correction and priority with reasons | Use screenshots of the actual run. Scores are project priority, not AI confidence or predicted loss. |
+| 10. Walkthrough | Presentation screenshots revealing draft → confirmation → ranking → review → outcome | Follow the walkthrough in [SCRIPT.md](SCRIPT.md). A short screen clip is optional; still screenshots support a slide-only recording. Label scripted scenes. |
+| 11–12. Human control and outcome | Approval/checks, audit trail and customer status | Show the actual approval confirmation and shared ownership. The scripted Sam P4 flow needs approval; a fully answered live Clario Tier 1 question can stay outside the queue. |
+| 13–14. Relevance and delivery | Benefits supported by the prototype, implemented work and remaining validation | Live Retell integration is built; live rehearsal remains pending. Keep future surge mode and production identity separate. |
+| 15. Close | Existing team closing message and credits | Keep the selected tagline and team attribution; finish with an honest prototype claim. |
 
-The sequence totals approximately 5:20, leaving about 40 seconds for transitions. Shorten narration to match the
-confirmed submission limit. Keep one main message on each slide and put source links beside any external fact.
+The actual deck is externally maintained. Reconcile its text with the script before recording, especially slides
+4 and 13 if they still contain unverified external statistics. Keep one main message per slide and put a checked
+source beside every external factual claim. Read the narration aloud to set the final timing.
 
 ## Build the slides
 
@@ -61,7 +65,7 @@ Use a disposable rehearsal database before using **Reset demo**; preserve existi
 ## Record and export
 
 - [ ] Confirm the competition's duration, deadline, file/link requirements and brand-use rules.
-- [ ] Agree the slide outline and narration with the team; assign a presenter and a final reviewer.
+- [ ] Reconcile the existing 15-slide deck with [SCRIPT.md](SCRIPT.md), keeping its team speaker allocation and confirming a final reviewer.
 - [ ] Capture current screenshots, label scripted scenes and check that only synthetic data is visible.
 - [ ] Finish the slide deck and speaker notes. Check text at normal presentation size.
 - [ ] Record the slide presentation with narration using the chosen editor or screen recorder.
