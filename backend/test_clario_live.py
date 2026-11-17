@@ -82,7 +82,11 @@ print("Chat card OK")
 # Customer app starts sessions with the customer as a dynamic variable (Retell client faked)
 seen = {}
 class FakeRetell:
-    call = SimpleNamespace(create_web_call=lambda **kw: seen.update(call=kw) or SimpleNamespace(call_id="call_1", access_token="tok"))
+    call = SimpleNamespace(
+        create_web_call=lambda **kw: seen.update(call=kw) or SimpleNamespace(
+            call_id="call_1", access_token="tok", transport="gateway", ice_servers=[{"urls": ["stun:stun.example"]}]),
+        retrieve=lambda call_id: SimpleNamespace(call_status="ongoing", transcript_object=[
+            SimpleNamespace(role="agent", content="Hi Sam, I'm Clario."), SimpleNamespace(role="user", content="")]))
     chat = SimpleNamespace(
         create=lambda **kw: seen.update(chat=kw) or SimpleNamespace(chat_id="chat_1", message_with_tool_calls=[
             SimpleNamespace(role="agent", content="Hi Sam, I'm Clario.")]),
@@ -90,10 +94,19 @@ class FakeRetell:
             SimpleNamespace(role="tool_call_invocation", content=""), SimpleNamespace(role="agent", content="It's due 19 Nov.")]))
 clario_live._client = lambda: FakeRetell
 r = c.post("/clario/session/call", json={"customer_id": "CUST-002"})
-assert r.json() == {"conversation_id": "call_1", "access_token": "tok"}
+assert r.json() == {"conversation_id": "call_1", "access_token": "tok", "transport": "gateway",
+                    "ice_servers": [{"urls": ["stun:stun.example"]}]}
+assert c.get("/clario/session/call/call_1/transcript").json() == {
+    "status": "ongoing", "transcript": [{"role": "agent", "content": "Hi Sam, I'm Clario."}]}
+assert c.get("/clario/session/call/nope/transcript").status_code == 404
 assert seen["call"]["agent_id"] == "agent_voice" and seen["call"]["retell_llm_dynamic_variables"]["customer_id"] == "CUST-002"
+ctx = json.loads(seen["call"]["retell_llm_dynamic_variables"]["customer_context"])
+assert ctx["customer_id"] == "CUST-002" and ctx["card_delivery"]["expected"].startswith("2026-11-19"), ctx
+assert all(set(v) <= {"type", "mask"} for v in ctx["accounts"])   # masked, no balances
 r = c.post("/clario/session/chat", json={"customer_id": "CUST-002"}).json()
 assert r == {"conversation_id": "chat_1", "messages": ["Hi Sam, I'm Clario."]} and seen["chat"]["agent_id"] == "agent_chat"
+FakeRetell.chat.create = lambda **kw: SimpleNamespace(chat_id="chat_2", message_with_tool_calls=[])   # agent waits for the customer
+assert c.post("/clario/session/chat", json={"customer_id": "CUST-002"}).json()["messages"] == ["It's due 19 Nov."]
 r = c.post("/clario/session/chat/chat_1", json={"content": "When is my card arriving?"}).json()
 assert r["messages"] == ["It's due 19 Nov."] and r["case_reference"] is None
 assert c.post("/clario/session/chat/unknown", json={"content": "hi"}).status_code == 404

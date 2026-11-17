@@ -55,8 +55,13 @@ def _dynamic_vars(customer_id):
     cust = md.get_customer(customer_id)
     if not cust:
         raise HTTPException(404, "unknown customer")
+    from main import clario_lookup
+    # The signed-in customer's own records (the same masked, no-balance view as lookup_customer), handed over at the
+    # start so Clario can answer "where's my card?" straight away, even before its tools can reach this backend.
+    context = json.dumps(clario_lookup(customer_id), separators=(",", ":"), default=str)
     return {"customer_id": customer_id, "first_name": cust["name"].split()[0],
-            "preferred_language": cust.get("language_label") or cust.get("language", "en")}
+            "preferred_language": cust.get("language_label") or cust.get("language", "en"),
+            "customer_context": context}
 
 
 def _remember(conv_id, customer_id):
@@ -83,15 +88,32 @@ def start_call(body: SessionStart):
     dyn = _dynamic_vars(body.customer_id)
     call = _client().call.create_web_call(agent_id=_agent("VOICE"), retell_llm_dynamic_variables=dyn)
     _remember(call.call_id, body.customer_id)
-    return {"conversation_id": call.call_id, "access_token": call.access_token}
+    # Retell v3: the browser must connect with the transport and ICE servers it chose for this call.
+    return {"conversation_id": call.call_id, "access_token": call.access_token, "transport": call.transport,
+            "ice_servers": [s.model_dump(exclude_none=True) if hasattr(s, "model_dump") else s
+                            for s in call.ice_servers or []]}
+
+
+@router.get("/clario/session/call/{call_id}/transcript")
+def call_transcript(call_id: str):
+    """Server-created v3 calls don't stream the transcript to the browser; Retell saves it when the call ends."""
+    if call_id not in SESSIONS:
+        raise HTTPException(404, "unknown call")
+    call = _client().call.retrieve(call_id)
+    lines = [{"role": t.role, "content": t.content} for t in call.transcript_object or [] if t.content]
+    return {"status": call.call_status, "transcript": lines}
 
 
 @router.post("/clario/session/chat")
 def start_chat(body: SessionStart):
     dyn = _dynamic_vars(body.customer_id)
-    chat = _client().chat.create(agent_id=_agent("CHAT"), retell_llm_dynamic_variables=dyn)
+    client = _client()
+    chat = client.chat.create(agent_id=_agent("CHAT"), retell_llm_dynamic_variables=dyn)
     _remember(chat.chat_id, body.customer_id)
-    return {"conversation_id": chat.chat_id, "messages": _agent_lines(chat.message_with_tool_calls)}
+    messages = _agent_lines(chat.message_with_tool_calls)
+    if not messages:  # a Retell chat agent speaks once the customer writes: tapping "Text Clario" is that "Hi"
+        messages = _agent_lines(client.chat.create_chat_completion(chat_id=chat.chat_id, content="Hi").messages)
+    return {"conversation_id": chat.chat_id, "messages": messages}
 
 
 @router.post("/clario/session/chat/{chat_id}")
