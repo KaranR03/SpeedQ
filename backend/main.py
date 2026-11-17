@@ -4,9 +4,22 @@ Run: uvicorn main:app --reload --port 8000
 """
 import hmac
 import os
+from pathlib import Path
+
+
+def _load_env_file(path=Path(__file__).resolve().parent / ".env"):
+    """Read backend/.env (KEY=value lines, git-ignored) so a teammate can drop in the shared file and run.
+    Variables already set in the environment win."""
+    if path.is_file():
+        for line in path.read_text().splitlines():
+            key, sep, value = line.strip().partition("=")
+            if sep and key and not key.startswith("#"):
+                os.environ.setdefault(key.strip(), value.strip().strip("'\""))
+
+
+_load_env_file()  # before the imports below read their settings
 import asyncio
 import json
-from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
