@@ -1,4 +1,4 @@
-/* Beacon Assist. No external scripts, analytics or rendering of data as HTML. */
+/* Westpac SpeedQ. No external scripts, analytics or rendering of data as HTML. */
 "use strict";
 import { createVisuals } from "/assets/visuals.js";
 import { createIntake } from "/assets/intake.js";
@@ -33,7 +33,7 @@ const state = {
   openingCase: false,
   liveConnected: false,
   lastRefresh: 0,
-  demoOfficer: sessionStorage.getItem("beacon-demo-officer") || "",
+  demoOfficer: sessionStorage.getItem("speedq-demo-officer") || "",
 };
 const names = {
   queue: "Priority queue",
@@ -619,7 +619,7 @@ function showView(view) {
     $(id).hidden = !visible;
   }
   $("breadcrumb-current").textContent = names[view];
-  document.title = `${names[view]} · Beacon Assist`;
+  document.title = `${names[view]} · Westpac SpeedQ`;
   document.querySelectorAll("[data-view]").forEach((b) => {
     const selected =
       b.dataset.view === (view === "detail" ? state.returnView : view);
@@ -1918,13 +1918,21 @@ function connectWorkspaceEvents() {
 $("demo-officer-select").addEventListener("change", () =>
   run(async () => {
     state.demoOfficer = $("demo-officer-select").value;
-    sessionStorage.setItem("beacon-demo-officer", state.demoOfficer);
+    sessionStorage.setItem("speedq-demo-officer", state.demoOfficer);
     ++state.selectionVersion;
     await init();
     if (state.view === "detail" && state.detail) renderDetail();
   }),
 );
 $("refresh-intake").addEventListener("click", () => run(refresh));
+if (window.parent !== window) {
+  const conversationLink = $("customer-conversation");
+  conversationLink.setAttribute("aria-haspopup", "dialog");
+  conversationLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    window.parent.postMessage({ type: "customer_preview" }, location.origin);
+  });
+}
 $("live-intake-shortcut").addEventListener("click", () =>
   run(() => navigate("intake")),
 );
@@ -1971,6 +1979,10 @@ window.addEventListener("message", (event) => {
     event.origin !== location.origin
   )
     return;
+  if (event.data?.type === "customer_preview_closed") {
+    $(state.view === "intake" ? "customer-conversation" : "main").focus();
+    return;
+  }
   if (event.data?.type === "intake") {
     run(() => navigate("intake"));
     return;

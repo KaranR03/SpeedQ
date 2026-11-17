@@ -1,19 +1,19 @@
 .demo-officer-control select {
   font-size: 11px;
   padding: 8px 9px;
-  border: 1px solid #dcced8;
+  border: 1px solid var(--control-border);
   border-radius: 6px;
-  background: #fbf6f9;
-  color: var(--wine);
+  background: var(--surface);
+  color: var(--brand);
   max-width: 165px;
   min-height: 36px;
 }
 .intake-shortcut {
   display: inline-flex;
   align-items: center;
-  background: #f0e9f4;
-  border: 1px solid #ded0e5;
-  color: #704a83;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-hover);
   border-radius: 20px;
   padding: 5px 11px;
   margin: 0 0 11px;
@@ -21,7 +21,7 @@
   font-weight: 600;
 }
 .intake-shortcut:hover {
-  background: #e9ddef;
+  background: var(--brand-border);
 }
 .intake-explainer {
   display: flex;
@@ -29,9 +29,9 @@
   align-items: flex-start;
   font-size: 12px;
   line-height: 1.85;
-  color: #695472;
-  background: #f1ebf5;
-  border: 1px solid #e1d5e8;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 18px 20px;
   margin: 0 0 25px;
@@ -54,7 +54,7 @@
   align-items: center;
   gap: 15px;
   font-size: 12px;
-  color: #706477;
+  color: var(--muted);
   margin-bottom: 18px;
 }
 .intake-summary > strong {
@@ -71,8 +71,8 @@
   align-items: start;
 }
 .intake-card {
-  border: 1px solid #e0d5e5;
-  border-top: 3px solid #9265a5;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--brand);
   background: white;
   border-radius: 13px;
   padding: 24px;
@@ -100,9 +100,9 @@
 .draft-status {
   font-size: 9px;
   font-weight: 600;
-  color: #79568c;
-  background: #f2eaf7;
-  border: 1px solid #e5d6ed;
+  color: var(--brand-hover);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-border);
   border-radius: 5px;
   padding: 5px 7px;
   white-space: nowrap;
@@ -117,7 +117,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #77528c;
+  color: var(--brand-hover);
   margin-bottom: 19px;
 }
 .draft-phase .icon {
@@ -139,8 +139,8 @@
   align-items: center;
   gap: 8px;
   text-align: center;
-  color: #756b7c;
-  border-bottom: 2px solid #eee7f1;
+  color: var(--muted);
+  border-bottom: 2px solid var(--line);
   padding: 0 0 11px;
 }
 .draft-steps li > span {
@@ -148,7 +148,7 @@
   width: 22px;
   display: grid;
   place-items: center;
-  background: #f0ebf3;
+  background: var(--surface);
   border-radius: 50%;
   font-size: 9px;
 }
@@ -160,16 +160,16 @@
   background: #e7f0e9;
 }
 .draft-steps li.current {
-  color: var(--wine);
+  color: var(--brand);
   font-weight: 600;
-  border-bottom-color: var(--wine);
+  border-bottom-color: var(--brand);
 }
 .draft-steps li.current > span {
-  background: var(--wine-light);
+  background: var(--brand-soft);
 }
 .draft-need {
-  background: #faf7fc;
-  border: 1px solid #eee4f2;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 17px;
   margin-bottom: 20px;
@@ -186,7 +186,7 @@
   font-size: 13px;
   line-height: 1.8;
   margin: 0;
-  color: #67546f;
+  color: var(--text-secondary);
   white-space: pre-line;
 }
 .draft-facts h3,
@@ -226,7 +226,7 @@
 }
 .draft-muted {
   font-size: 11px;
-  color: #73667d;
+  color: var(--muted);
   line-height: 1.8;
   margin-bottom: 14px;
 }
@@ -241,7 +241,7 @@
 .draft-signals .icon {
   height: 15px;
   width: 15px;
-  color: #6d876e;
+  color: var(--muted);
   margin-top: 2px;
 }
 .draft-signals strong {
@@ -251,7 +251,7 @@
 }
 .draft-signals small {
   font-size: 11px;
-  color: #6a6670;
+  color: var(--muted);
   line-height: 1.75;
   display: block;
   margin-top: 3px;
@@ -263,7 +263,7 @@
 }
 .draft-reported small {
   display: block;
-  color: #75677d;
+  color: var(--muted);
   font-size: 10px;
   line-height: 1.8;
   margin: 10px 0;
@@ -274,7 +274,7 @@
   padding-top: 18px;
   border-top: 1px solid var(--line);
   margin-top: 19px;
-  color: #74617e;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.7;
 }
@@ -285,7 +285,7 @@
 }
 .draft-updated {
   font-size: 10px;
-  color: #726678;
+  color: var(--muted);
   margin-top: 17px;
 }
 .draft-handoff {
@@ -317,7 +317,7 @@
   font-size: 13px;
   max-width: 550px;
   margin: 0 auto;
-  color: #706477;
+  color: var(--muted);
   line-height: 1.9;
 }
 .assignment-banner {
@@ -325,16 +325,16 @@
   justify-content: space-between;
   align-items: center;
   gap: 15px;
-  border: 1px solid #dfd4e6;
-  background: #f4eff7;
+  border: 1px solid var(--line);
+  background: var(--surface);
   padding: 14px 17px;
   border-radius: 8px;
   margin-bottom: 20px;
   font-size: 12px;
-  color: #70557d;
+  color: var(--text-secondary);
 }
 .assignment-banner strong {
-  color: #584062;
+  color: var(--ink);
 }
 .assignment-banner.other {
   background: #fbf2e7;
@@ -371,7 +371,7 @@
 }
 @keyframes field-arrival {
   from {
-    background: #f0dfef;
+    background: var(--brand-soft);
   }
   to {
     background: transparent;

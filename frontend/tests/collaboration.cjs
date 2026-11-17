@@ -10,7 +10,7 @@ const AxeBuilder = require("@axe-core/playwright").default;
 const root = path.resolve(__dirname, "../.."),
   port = Number(process.env.BEACON_COLLAB_PORT || 8026),
   base = `http://127.0.0.1:${port}`;
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), "beacon-collaboration-"));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "speedq-collaboration-"));
 const output = path.join(root, "frontend/test-results");
 let server,
   browser,
@@ -402,6 +402,7 @@ async function audit(page, label) {
   await demo.locator('#scenes button[data-id="sam"]').click();
   const officer = demo.frameLocator("#off");
   await officer.locator("#intake-title").waitFor();
+  check(!(await demo.locator("#cust").isVisible()), "A scripted scene updates Live intake without opening customer chat");
   await officer
     .locator(".draft-need h3")
     .filter({ hasText: "Card delivery" })
@@ -415,6 +416,11 @@ async function audit(page, label) {
     fullPage: true,
     animations: "disabled",
   });
+  await officer.getByRole("link", { name: "View customer conversation" }).click();
+  await demo.getByRole("dialog", { name: "Customer conversation" }).waitFor();
+  check(await demo.frameLocator("#cust").locator("#chat").isVisible(), "The running conversation can be inspected on demand");
+  await demo.getByRole("button", { name: "Close customer conversation" }).click();
+  await demo.locator("#customer-preview").waitFor({ state: "hidden" });
   await until(
     async () => (await api("/queue")).length === 1,
     "Script did not confirm and queue its draft",
@@ -428,6 +434,7 @@ async function audit(page, label) {
     (await api("/workspace/intake")).active_count === 0,
     "Scripted conversation completes its draft handoff",
   );
+  check(!(await demo.locator("#cust").isVisible()), "Preview stays closed after the scripted handoff completes");
   await demo.close();
   check(errors.length === 0, "No browser errors: " + errors.join("; "));
   console.log(

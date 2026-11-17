@@ -1,9 +1,11 @@
 # Shared ownership and live intake
 
 **Implemented and merged:** [PR #10](https://github.com/bharath-blazecode/Team-Astars/pull/10), verified in remote
-`main` at `5c84495` on 17 Nov 2026 (Brisbane). This document is the implemented flow and walkthrough, not an
-outstanding feature proposal. Dashboard appearance refinements, new feature candidates and external integrations
-remain open in the [README roadmap](README.md#remaining-work-and-next-iterations).
+`main` at `5c84495`, and still present in remote `main` at `a184be1` on 17 Nov 2026 (Brisbane). Live Clario tools (#13),
+pale dashboard navigation (#18) and `.env` setup (#19) are also merged. This document is the implemented flow and
+walkthrough. Further feature candidates and live rehearsal remain in the
+[README roadmap](README.md#remaining-work-and-next-iterations). The submission uses
+[presentation slides with narration](docs/video/SHOT_LIST.md).
 
 ## Implemented flow
 
@@ -28,7 +30,8 @@ remain open in the [README roadmap](README.md#remaining-work-and-next-iterations
 - Claim another case, choose **Release case**, and let the other officer take over. Manual cases retain their manual
   workflow and notes through release and re-claim.
 - Open `/demo`, start a customer scene and watch the officer pane switch to **Live intake**. Facts appear as the
-  conversation progresses. After customer confirmation, the same handoff points to its ranked case.
+  conversation progresses without a chat column. **Live intake → View customer conversation** opens the optional
+  preview; closing it keeps the scene running. After confirmation, the same handoff points to its ranked case.
 
 ## Identity and transport
 
@@ -53,8 +56,10 @@ submission can recover without duplicating a case, even if an officer has alread
 This remains a **single-backend-worker prototype**. The lock and event counter are process-local. Multiple production
 workers need transactional database coordination and a shared event transport. Named Basic accounts are not SSO,
 MFA, role separation or a production customer login. Use HTTPS for remote access. A live Retell agent must explicitly
-call the draft API to stream its progress; the existing final-card webhook still works independently. The supplied
-text conversations remain scripted, with real backend updates rather than a newly integrated language model.
+use the signed `update_card` and `submit_card` tools configured in Retell to stream and confirm progress; the
+existing final-card webhook still works independently. Live voice/chat integration is implemented in
+`backend/clario_live.py`; its external configuration needs [live rehearsal](LIVE_TEST_CHECKLIST.md). The supplied
+fallback scenes remain scripted, with actual local backend updates.
 
 ## Verification and delivery
 

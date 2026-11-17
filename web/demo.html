@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Beacon Assist · Demo</title>
+  <title>Westpac SpeedQ · Demo</title>
+  <link rel="icon" href="/assets/support-headset.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
   <script type="module" src="/static/demo.js"></script>
 </head>
 <body class="demo">
   <div class="dbar">
-    <b>Beacon Assist</b>
+    <b>Westpac SpeedQ</b>
     <span id="scenes"></span>
     <span class="spacer"></span>
     <label class="small">Speed
@@ -17,10 +18,19 @@
     </label>
     <button class="btn small" id="reset">Reset demo</button>
   </div>
-  <div class="caption" id="caption">Pick a customer to start. Left: the customer's app with Clario. Right: the officer's dashboard, live.</div>
+  <div class="caption" id="caption">Choose a scene to watch a card form in Live intake, then review it in Priority queue.</div>
   <div class="stage">
-    <div class="left"><iframe id="cust" src="/customer?embed=1" title="Customer app"></iframe></div>
     <iframe id="off" src="/officer" title="Officer dashboard"></iframe>
   </div>
+  <dialog id="customer-preview" class="customer-preview" aria-labelledby="customer-preview-title" aria-describedby="customer-preview-description">
+    <div class="preview-header">
+      <div>
+        <h2 id="customer-preview-title">Customer conversation</h2>
+        <p id="customer-preview-description">Optional preview. For live calls, <a href="/customer" target="_blank" rel="noopener noreferrer">open the customer app in a new tab</a>.</p>
+      </div>
+      <button type="button" class="btn small" id="close-customer-preview" aria-label="Close customer conversation" autofocus>Close</button>
+    </div>
+    <iframe id="cust" src="/customer?embed=1" title="Customer app"></iframe>
+  </dialog>
 </body>
 </html>

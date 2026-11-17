@@ -1,4 +1,4 @@
-"""FastAPI app for Beacon Assist: Clario's intake, Prorio's priority list and proposals, and the officer actions.
+"""FastAPI app for Westpac SpeedQ: Clario's intake, Prorio's priority list and proposals, and the officer actions.
 
 Run: uvicorn main:app --reload --port 8000
 """
@@ -38,7 +38,7 @@ from prorio import evidence, learning, protocols
 from prorio.propose import ACTIONS, ACTION_TEXT
 from prorio.score import BAND_LABEL, BAND_MESSAGE, FIRST_SEEN, HANDOFF
 
-app = FastAPI(title="Beacon Assist backend (Prorio)", docs_url=None, redoc_url=None)
+app = FastAPI(title="Westpac SpeedQ backend (Prorio)", docs_url=None, redoc_url=None)
 app.middleware("http")(browser_security)
 _origins = [origin.strip() for origin in os.environ.get("NRY_CORS_ORIGINS", "").split(",")
             if origin.strip() and origin.strip() != "*"]
@@ -57,7 +57,7 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 @app.get("/assets/{filename}", include_in_schema=False)
 def frontend_asset(filename: str):
     # Do not expose tests, package manifests, reports or node_modules as web assets.
-    if filename not in {"app.js", "visuals.js", "intake.js", "collaboration.css", "insights.css", "styles.css", "beacon.svg", "docs.js"}:
+    if filename not in {"app.js", "visuals.js", "intake.js", "collaboration.css", "insights.css", "styles.css", "support-headset.svg", "docs.js"}:
         raise HTTPException(404, "asset not found")
     return FileResponse(FRONTEND / filename)
 

@@ -8,7 +8,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  color: #6d6175;
+  color: var(--muted);
   font-size: 11px;
 }
 .insights-scope > span:first-child {
@@ -19,7 +19,7 @@
 .insights-scope .icon {
   width: 16px;
   height: 16px;
-  color: var(--wine);
+  color: var(--brand);
 }
 .insight-metrics {
   display: grid;
@@ -38,7 +38,7 @@
 }
 .metric-label {
   font-size: 12px;
-  color: #6b5f73;
+  color: var(--muted);
   font-weight: 600;
 }
 .metric-value {
@@ -50,14 +50,14 @@
 .metric-description {
   font-size: 11px;
   line-height: 1.7;
-  color: #706477;
+  color: var(--muted);
 }
 .insight-metric.attention {
-  background: #fff9fb;
-  border-top: 2px solid #b44c64;
+  background: var(--brand-tint);
+  border-top: 2px solid var(--brand);
 }
 .insight-metric.attention .metric-value {
-  color: var(--wine);
+  color: var(--brand);
 }
 .insight-two-column {
   display: grid;
@@ -75,14 +75,14 @@
 }
 .chart-description {
   font-size: 12px;
-  color: #706477;
+  color: var(--muted);
   line-height: 1.75;
   margin-bottom: 19px;
 }
 .chart-footnote {
   font-size: 11px;
   line-height: 1.8;
-  color: #706477;
+  color: var(--muted);
   margin: 16px 0 0;
 }
 .priority-donut {
@@ -99,7 +99,7 @@
 }
 .donut-label {
   font-size: 10px;
-  fill: #706477;
+  fill: var(--muted);
   font-family: inherit;
 }
 .donut-layout {
@@ -128,7 +128,7 @@
   min-height: 35px;
 }
 .legend-button:hover:not(:disabled) {
-  background: #faf5f8;
+  background: var(--surface);
 }
 .legend-button:disabled,
 .chart-row:disabled,
@@ -142,7 +142,7 @@
 }
 .legend-percent {
   font-size: 10px;
-  color: #706477;
+  color: var(--muted);
   width: 30px;
   text-align: right;
 }
@@ -160,14 +160,14 @@
   border-radius: 4px;
 }
 .chart-row:hover:not(:disabled) {
-  background: #fbf7fa;
+  background: var(--surface);
 }
 .chart-row-heading {
   display: flex;
   justify-content: space-between;
   gap: 14px;
   font-size: 12px;
-  color: #66576f;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 .chart-row-heading strong {
@@ -180,10 +180,10 @@
   height: 8px;
 }
 .bar-track {
-  fill: #f0ecf2;
+  fill: var(--surface);
 }
 .bar-fill {
-  fill: var(--wine);
+  fill: var(--brand);
 }
 .data-bar.blue .bar-fill {
   fill: #54769f;
@@ -192,7 +192,7 @@
   fill: #487865;
 }
 .data-bar.neutral .bar-fill {
-  fill: #82728c;
+  fill: var(--muted);
 }
 .care-flow {
   display: grid;
@@ -202,7 +202,7 @@
 }
 .care-flow-step {
   border: 1px solid var(--line);
-  background: #fcfafc;
+  background: var(--surface);
   text-align: left;
   border-radius: 9px;
   padding: 18px;
@@ -212,22 +212,22 @@
   position: relative;
 }
 .care-flow-step:hover:not(:disabled) {
-  border-color: #bba0b1;
-  background: #faf2f6;
+  border-color: var(--brand-border);
+  background: var(--brand-soft);
 }
 .care-flow-step > strong {
   font-size: 29px;
   font-weight: 600;
   line-height: 1.3;
-  color: var(--wine);
+  color: var(--brand);
 }
 .care-flow-step > span:last-child {
   font-size: 12px;
-  color: #695b71;
+  color: var(--text-secondary);
 }
 .flow-step-index {
   font-size: 10px;
-  color: #7b6c85;
+  color: var(--muted);
   letter-spacing: 1px;
 }
 .decision-chart {
@@ -248,11 +248,11 @@
 .decision-column > strong {
   font-size: 28px;
   font-weight: 600;
-  color: #65506f;
+  color: var(--text-secondary);
 }
 .decision-column > span {
   font-size: 12px;
-  color: #706477;
+  color: var(--muted);
 }
 .decision-column meter {
   width: 100%;
@@ -261,19 +261,19 @@
 }
 .decision-column meter::-webkit-meter-bar,
 .score-row meter::-webkit-meter-bar {
-  background: #eee8f0;
+  background: var(--surface);
   border: 0;
   border-radius: 5px;
   height: 8px;
 }
 .decision-column meter::-webkit-meter-optimum-value,
 .score-row meter::-webkit-meter-optimum-value {
-  background: #865474;
+  background: var(--brand);
   border-radius: 5px;
 }
 .decision-column meter::-moz-meter-bar,
 .score-row meter::-moz-meter-bar {
-  background: #865474;
+  background: var(--brand);
   border-radius: 5px;
 }
 .coverage-links {
@@ -308,8 +308,8 @@
   gap: 8px;
 }
 .watch-case {
-  background: #fff9fb;
-  border: 1px solid #eedde5;
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-border);
   border-radius: 8px;
   padding: 13px 15px;
   text-align: left;
@@ -317,7 +317,7 @@
   gap: 9px;
 }
 .watch-case:hover {
-  background: #f9edf3;
+  background: var(--brand-soft);
 }
 .watch-case > span {
   display: flex;
@@ -326,7 +326,7 @@
   font-size: 11px;
 }
 .watch-case > span:last-child {
-  color: #785a6f;
+  color: var(--text-secondary);
   justify-content: space-between;
 }
 .watch-case .icon {
@@ -337,7 +337,7 @@
   display: flex;
   gap: 9px;
   font-size: 11px;
-  color: #706477;
+  color: var(--muted);
   line-height: 1.9;
   margin: 0 0 12px;
 }
@@ -348,21 +348,21 @@
 }
 .chart-empty {
   font-size: 12px;
-  color: #706477;
+  color: var(--muted);
   padding: 30px 0;
 }
 .insight-filter {
   margin: 0 23px 14px;
   padding: 10px 12px;
-  background: #f8eff4;
-  border: 1px solid #e8d6e1;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
-  color: #70405a;
+  color: var(--text-secondary);
 }
 .insight-filter .text-button {
   white-space: nowrap;
@@ -377,8 +377,8 @@
 }
 .score-explainer {
   padding: 20px;
-  background: #fcf9fc;
-  border: 1px solid #e7dce9;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 9px;
   margin-bottom: 27px;
 }
@@ -398,14 +398,14 @@
 }
 .score-total {
   font-size: 28px;
-  color: var(--wine);
+  color: var(--brand);
   letter-spacing: -1px;
   white-space: nowrap;
 }
 .score-total small {
   font-size: 11px;
   font-weight: 400;
-  color: #706477;
+  color: var(--muted);
   letter-spacing: 0;
 }
 .score-rows {
@@ -418,11 +418,11 @@
   gap: 12px;
   align-items: center;
   font-size: 12px;
-  color: #6f5b78;
+  color: var(--text-secondary);
 }
 .score-row > strong {
   text-align: right;
-  color: var(--wine);
+  color: var(--brand);
 }
 .score-row meter {
   width: 100%;
@@ -486,25 +486,25 @@
 }
 .account-tile {
   padding: 16px;
-  border: 1px solid #e6dce9;
+  border: 1px solid var(--line);
   border-radius: 9px;
   display: flex;
   flex-direction: column;
   gap: 7px;
-  background: #fdfbfd;
+  background: var(--surface);
 }
 .account-tile span {
   font-size: 11px;
-  color: #706477;
+  color: var(--muted);
 }
 .account-tile strong {
   font-size: 21px;
   letter-spacing: -0.5px;
-  color: #614366;
+  color: var(--text-secondary);
 }
 .account-tile small {
   font-size: 11px;
-  color: #706477;
+  color: var(--muted);
 }
 .delivery-card {
   padding: 17px;
@@ -518,7 +518,7 @@
 .delivery-card > small {
   font-size: 11px;
   line-height: 1.8;
-  color: #706477;
+  color: var(--muted);
   display: block;
   margin-top: 17px;
 }
@@ -537,8 +537,8 @@
   color: #476b55;
 }
 .delivery-step.expected {
-  color: #776581;
-  border-top: 2px dashed #c3b0ca;
+  color: var(--muted);
+  border-top: 2px dashed var(--control-border);
 }
 .delivery-step .icon {
   width: 15px;
@@ -549,7 +549,7 @@
 }
 .delivery-step span {
   font-size: 11px;
-  color: #706477;
+  color: var(--muted);
 }
 .transaction-list {
   display: grid;
@@ -565,8 +565,8 @@
   align-items: center;
 }
 .transaction-row.linked {
-  background: #fcf3f7;
-  border-color: #e4c8d7;
+  background: var(--brand-soft);
+  border-color: var(--brand-border);
 }
 .transaction-meta {
   min-width: 0;
@@ -579,10 +579,10 @@
 }
 .transaction-meta span {
   font-size: 10px;
-  color: #706477;
+  color: var(--muted);
 }
 .transaction-meta span:last-child {
-  color: var(--wine);
+  color: var(--brand);
   font-size: 10px;
 }
 .transaction-amount {
@@ -613,7 +613,7 @@
 .security-timeline .icon {
   width: 17px;
   height: 17px;
-  color: #8a5c78;
+  color: var(--muted);
   margin-top: 3px;
 }
 .security-timeline strong {
@@ -626,7 +626,7 @@
 }
 .security-timeline small {
   font-size: 10px;
-  color: #706477;
+  color: var(--muted);
 }
 .handoff-text {
   min-height: 280px;
@@ -639,7 +639,7 @@
   padding: 25px 0;
 }
 .context-empty .icon {
-  color: var(--wine);
+  color: var(--brand);
   margin-bottom: 15px;
 }
 @media (max-width: 1200px) {

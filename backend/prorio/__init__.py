@@ -1,4 +1,4 @@
-"""Prorio, Beacon Assist's back-office agent: Priority and Protocol.
+"""Prorio, Westpac SpeedQ's back-office agent: Priority and Protocol.
 
 Prorio is deterministic code, not a language model, and it calls no outside service: customer data stays inside the
 backend. It reads only the structured fields of a Customer Service Card (never the customer's free-text summary),

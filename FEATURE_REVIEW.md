@@ -3,9 +3,10 @@
 The implemented dashboard keeps the priority queue as its first screen; **Care insights** offers a graphical route
 into the work. Shared ownership and **Live intake** extend the handoff while retaining human approval.
 
-**Reviewed 17 Nov 2026 (Brisbane)** against `main` at `5c84495`: insights/context were merged in PR #9 and
-collaboration/live intake in PR #10. Further brainstorming, appearance refinement and manual usability review are
-still planned. The [README roadmap](README.md#remaining-work-and-next-iterations) is the current work checklist.
+**Reviewed 17 Nov 2026 (Brisbane)** against `main` at `a184be1`: insights/context (#9), collaboration/live intake
+(#10), live Clario (#13), branding (#14), pale navigation/controls (#18) and automatic `.env` loading (#19) are merged.
+The original dashboard partitions remain in place. Further brainstorming and manual usability review remain open;
+the selected submission format is a narrated [presentation-slide video](docs/video/SHOT_LIST.md). The [README roadmap](README.md#remaining-work-and-next-iterations) is the current work checklist.
 
 ## What is actually available
 
@@ -16,7 +17,7 @@ still planned. The [README roadmap](README.md#remaining-work-and-next-iterations
 | `backend/data/cards.json` | 6 | Current/mock block state and replacement delivery milestones | Expected delivery is not proof of arrival |
 | `backend/data/protocols.json` | 31 protocols | Harm points, minimum bands, checks, actions and sources | Procedures do not establish that checks occurred in real life |
 | Saved case and audit records | Varies by local workspace | Current stages, scores, score parts, decisions, pickup history, repeat contacts and protocol suggestions | Small demonstration history; case creation uses the live clock |
-| Case assignments/revisions and intake drafts | Varies by local workspace | Current officer, claim/release/completion events, draft facts and customer confirmation | Local-demo identities are simulations; draft progress comes from scripted scenes unless an external agent is integrated |
+| Case assignments/revisions and intake drafts | Varies by local workspace | Current officer, claim/release/completion events, draft facts and customer confirmation | Local-demo identities are simulations; drafts come from scripted scenes or signed Clario tools, with live service configuration still requiring rehearsal |
 
 Account evidence is anchored to the existing fixed demo clock. Current case age uses the live clock. Both are labelled
 in the interface; joining them into a single unqualified “today” chart would misrepresent the data.
@@ -62,7 +63,7 @@ implemented; the candidates above should not be reported as missing core dashboa
 | Queue forecasts and staffing recommendations | Six synthetic customers and a short saved-case history cannot support reliable demand predictions | Sustained arrival/handling history, staffing capacity, business calendars and evaluation against actual outcomes |
 | Fraud network or payee risk scores | Common payees do not establish fraud; the supplied examples do not form a validated fraud network | More representative ownership-checked cases and adjudicated outcomes; keep existing cross-case signals as evidence for human review |
 | “Money saved”, AI accuracy or customer happiness charts | Simulated actions and decisions contain none of these outcome measurements | Verified recovery events, labelled evaluations and consented feedback |
-| Automatic translation or a new voice agent | A preferred language and one supplied translation are not a translation system | An approved translation/voice integration, credentials and a checked customer-facing workflow |
+| Additional translation/provider capabilities | Retell text/voice is integrated, while language behaviour depends on the configured external agent; scripted translations alone do not validate it | Rehearse the current agent/languages first; evaluate another provider or translation capability separately |
 | Real callbacks, account changes or payment recovery | The repository intentionally mocks these actions | Authorised bank integrations, authentication, permissions, operational controls and end-to-end validation |
 | Production identity and roles | Named Basic accounts exist, but remain prototype controls without customer identity or role separation | SSO/MFA, customer authentication, officer/protocol-owner permissions, session controls and monitoring |
 

@@ -6,10 +6,10 @@
     <meta name="color-scheme" content="light" />
     <meta
       name="description"
-      content="Beacon Assist — a focused officer workspace for prioritising care and reviewing proposed solutions. Team Astars hackathon prototype."
+      content="Westpac SpeedQ — a focused officer workspace for prioritising care and reviewing proposed solutions. Team Astars hackathon prototype."
     />
-    <title>Priority queue · Beacon Assist</title>
-    <link rel="icon" href="/assets/beacon.svg" type="image/svg+xml" />
+    <title>Priority queue · Westpac SpeedQ</title>
+    <link rel="icon" href="/assets/support-headset.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="stylesheet" href="/assets/insights.css" />
     <link rel="stylesheet" href="/assets/collaboration.css" />
@@ -97,12 +97,16 @@
     </svg>
 
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-      <a class="brand" href="/" aria-label="Beacon Assist home"
-        ><img src="/assets/beacon.svg" alt="" width="38" height="38" /><span
-          >beacon<span class="brand-assist">assist</span></span
-        ></a
-      >
-      <div class="workspace-label">OFFICER WORKSPACE</div>
+      <a class="brand" href="/" aria-label="Westpac SpeedQ home">
+        <span class="brand-mark"
+          ><img src="/assets/support-headset.svg" alt="" width="30" height="30"
+        /></span>
+        <span class="brand-copy"
+          ><span class="brand-bank">Westpac</span
+          ><span class="brand-project">SpeedQ</span></span
+        >
+      </a>
+      <div class="workspace-label">Officer workspace</div>
       <nav>
         <button class="nav-item active" data-view="queue" aria-current="page">
           <svg class="icon"><use href="#i-grid" /></svg>Priority queue<span
@@ -405,7 +409,7 @@
             ><span
               >Evidence-based priority. Human-approved actions. Every decision
               recorded.</span
-            ><span class="footnote-end">Beacon Assist / Team Astars</span>
+            ><span class="footnote-end">Westpac SpeedQ / Team Astars</span>
           </div>
         </section>
 
@@ -446,10 +450,14 @@
             <svg class="icon"><use href="#i-shield" /></svg
             ><span
               >Drafts have no priority or executable plan. Customer confirmation
-              creates the ranked case. The current customer conversations are
-              scripted demos with real backend updates.</span
-            ><a href="/demo" target="_blank" rel="noopener"
-              >Open conversation demo</a
+              creates the ranked case. Conversations can come from scripted
+              scenes or the configured live Clario service.</span
+            ><a
+              id="customer-conversation"
+              href="/customer"
+              target="_blank"
+              rel="noopener noreferrer"
+              >View customer conversation</a
             >
           </div>
           <div id="intake-content"></div>

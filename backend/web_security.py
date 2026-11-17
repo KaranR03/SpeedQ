@@ -84,7 +84,7 @@ async def browser_security(request: Request, call_next):
         # Intake can use the existing webhook secret instead of staff credentials.
         if actor is None and not webhook and not secret_intake and not draft_intake:
             response = JSONResponse({"detail": "Staff sign-in required."}, status_code=401,
-                                    headers={"WWW-Authenticate": 'Basic realm="Beacon Assist", charset="UTF-8"'})
+                                    headers={"WWW-Authenticate": 'Basic realm="Westpac SpeedQ", charset="UTF-8"'})
         else:
             request.state.staff_actor = actor
             response = await call_next(request)
