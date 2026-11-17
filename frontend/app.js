@@ -33,7 +33,7 @@ const state = {
   openingCase: false,
   liveConnected: false,
   lastRefresh: 0,
-  demoOfficer: sessionStorage.getItem("beacon-demo-officer") || "",
+  demoOfficer: sessionStorage.getItem("speedq-demo-officer") || "",
 };
 const names = {
   queue: "Priority queue",
@@ -810,6 +810,7 @@ function renderDetail() {
       { class: "metadata-grid" },
       ...[
         ["Customer", c.customer_id],
+        ["Mobile on file", c.customer_mobile || "Not recorded"],
         ["Language", c.language_label || "English"],
         ["Status", c.card_status.label],
       ].map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, v))),
@@ -1917,7 +1918,7 @@ function connectWorkspaceEvents() {
 $("demo-officer-select").addEventListener("change", () =>
   run(async () => {
     state.demoOfficer = $("demo-officer-select").value;
-    sessionStorage.setItem("beacon-demo-officer", state.demoOfficer);
+    sessionStorage.setItem("speedq-demo-officer", state.demoOfficer);
     ++state.selectionVersion;
     await init();
     if (state.view === "detail" && state.detail) renderDetail();

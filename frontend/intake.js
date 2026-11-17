@@ -113,7 +113,7 @@ export function createIntake({
         el(
           "div",
           { class: "draft-need" },
-          el("span", { class: "section-kicker" }, "THE CUSTOMER’S NEED"),
+          el("span", { class: "section-kicker" }, "The customer’s need"),
           el(
             "h3",
             {},

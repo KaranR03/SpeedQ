@@ -11,7 +11,9 @@ needed. **Load sample cases** adds a synthetic queue without resetting existing 
 is optional. The API/schema reference at `/docs` is self-hosted and follows the same staff access controls.
 
 **Status reviewed 17 Nov 2026 (Brisbane):** backend case handling, Prorio, persistence, care insights, shared officer
-claims and live intake are implemented on `main` through PR #10 (`5c84495`). This remains a single-worker prototype.
+claims and live intake are implemented on `main`. Westpac SpeedQ branding and the local GEL mark are merged through
+PR #14; the live Clario/Retell integration is merged through PR #13. Both are included in the verified `main`
+at `37091a8`. This remains a single-worker prototype.
 The current status and remaining dashboard/integration work are tracked in the
 [main README](../README.md#remaining-work-and-next-iterations); the external Retell configuration is not stored here.
 
@@ -19,6 +21,7 @@ Checks: `python -m prorio.selftest` (Prorio's scoring, gates and proposals), `py
 `python test_db.py` (persistence across a restart), `python test_workspace.py` (dashboard integration and security).
 `python test_insights.py` covers the analytics, customer scope, payment totals and evidence/live-clock boundaries.
 `python test_collaboration.py` covers officer claim races, ownership transfer, stale decisions, identity, drafts and restart recovery.
+`python test_clario_live.py` checks signed Retell tools and customer session scope with a faked client, without live calls.
 Browser tests: `cd ../frontend && npm ci && npm test` (Node 22.12+ and Chromium). All customer data is synthetic.
 
 Staff endpoints reject remote clients in local demo mode. Set `NRY_STAFF_PASSWORD` and optionally `NRY_STAFF_USER`

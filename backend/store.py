@@ -144,6 +144,7 @@ def create_case(p: RetellPayload, intake_draft_id=None):
             "case_id": cid,
             "customer_id": p.customer_id,
             "customer_name": p.customer_name or cust.get("short_name", ""),
+            "customer_mobile": cust.get("mobile", ""),
             "language": p.language,
             "language_label": p.language_label or cust.get("language_label", ""),
             "channel": "voice",

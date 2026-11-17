@@ -266,6 +266,8 @@ async function play(id) {
   const sc = SCENES[id];
   if (!sc) return;
   if (S.running) { toast("A conversation is already running."); return; }
+  if (L.mode) liveReset();
+  L.mode = null;
   Object.assign(S, { running: true, cid: sc.cid, ref: null, draft: null, flags: {}, lang: sc.lang || "en", outcomeShown: false });
   clearInterval(S.poll);
   chat().replaceChildren(); $("#quick").replaceChildren(); $("#cardTab").replaceChildren("My card");
@@ -285,6 +287,112 @@ async function play(id) {
   tell({ type: "done", id });
 }
 
+
+// ---------- Live Clario (Retell): "Get help" -> Text or Call ----------
+// The backend starts the Retell chat or web call for the signed-in customer, so Clario already knows who it is
+// talking to. Clario's look-ups and the card go through the backend's signed Retell tools; this page only shows the
+// conversation and follows the card once Clario files it.
+const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo"], ["CUST-002", "Sam Taylor"], ["CUST-003", "Priya Sharma"],
+  ["CUST-004", "Minh Nguyen"], ["CUST-005", "Alex"], ["CUST-006", "Jordan Lee"]];
+const L = { cid: "CUST-002", mode: null, conv: null, call: null, poll: null };
+
+function liveReset() {
+  if (L.call) { try { L.call.stopCall(); } catch { /* already ended */ } }
+  clearInterval(L.poll); clearInterval(S.poll);
+  Object.assign(L, { mode: null, conv: null, call: null });
+  Object.assign(S, { ref: null, cid: L.cid, outcomeShown: false, lang: L.cid === "CUST-004" ? "vi" : "en" });
+  chat().replaceChildren(); $("#quick").replaceChildren(); $("#cardTab").replaceChildren("My card");
+  show("chat");
+}
+
+function getHelp() {
+  liveReset();
+  const name = LIVE_CUSTOMERS.find(([id]) => id === L.cid)[1].split(" ")[0];
+  add(h("div", { class: "msgb c" }, `Hi ${name}. How would you like to get help?`,
+    h("span", { class: "gloss", text: "You're signed in, so Clario already knows it's you. No security questions." })));
+  $("#quick").replaceChildren(
+    h("button", { class: "help-opt", onclick: liveText }, "💬 Text Clario"),
+    h("button", { class: "help-opt", onclick: liveCall }, "📞 Call Clario"));
+  $("#sim").textContent = "Live Clario (Retell) · synthetic customer data · no real money moves";
+}
+
+function followCase() {
+  clearInterval(L.poll);
+  L.poll = setInterval(async () => {
+    if (!L.conv || S.ref) return clearInterval(L.poll);
+    const st = await api(`/clario/session/${encodeURIComponent(L.conv)}`).catch(() => null);
+    if (st?.case_reference) filed(st.case_reference);
+  }, 2000);
+}
+function filed(ref) {
+  if (S.ref) return;
+  S.ref = ref;
+  add(h("div", { class: "sys chip ok", text: `Card ${ref} sent to the team. Follow it under "My card".` }));
+  $("#cardTab").replaceChildren("My card", h("span", { class: "dot" }));
+  startPolling();
+}
+
+async function liveText() {
+  liveReset(); L.mode = "text";
+  const typing = add(h("div", { class: "typing", text: "•••" }));
+  try {
+    const r = await api("/clario/session/chat", { customer_id: L.cid });
+    L.conv = r.conversation_id;
+    typing.remove();
+    r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
+    if (!r.messages.length) add(h("div", { class: "msgb c", text: "Hi, I'm Clario, Westpac's AI assistant. What can I help with?" }));
+  } catch (e) { typing.remove(); return add(h("div", { class: "banner err", text: `Can't reach Clario: ${e.message}` })); }
+  const input = h("input", { class: "composer-in", placeholder: "Message Clario", "aria-label": "Message Clario", maxlength: "2000" });
+  const send = async (text) => {
+    text = (text ?? input.value).trim();
+    if (!text || L.mode !== "text") return;
+    input.value = "";
+    add(h("div", { class: "msgb u", text }));
+    const t = add(h("div", { class: "typing", text: "•••" }));
+    try {
+      const r = await api(`/clario/session/chat/${encodeURIComponent(L.conv)}`, { content: text });
+      t.remove();
+      r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
+      if (r.case_reference) filed(r.case_reference);
+    } catch (e) { t.remove(); add(h("div", { class: "banner err", text: `Message not sent: ${e.message}` })); }
+  };
+  L.send = send;
+  $("#quick").replaceChildren(h("form", { class: "composer", onsubmit: (e) => { e.preventDefault(); send(); } },
+    input, h("button", { class: "btn primary", type: "submit", text: "Send" })));
+  input.focus();
+}
+
+async function liveCall() {
+  liveReset(); L.mode = "call";
+  const status = add(h("div", { class: "sys chip", text: "Calling Clario…" }));
+  const lines = h("div", { class: "transcript" });
+  add(lines);
+  try {
+    const [{ RetellWebClient }, r] = await Promise.all([import("./retell-web.js"), api("/clario/session/call", { customer_id: L.cid })]);
+    L.conv = r.conversation_id;
+    const call = new RetellWebClient();
+    L.call = call;
+    call.on("call_started", () => { status.textContent = "Connected · Clario is listening"; });
+    call.on("update", (u) => {
+      lines.replaceChildren(...(u.transcript || []).map((m) =>
+        h("div", { class: `msgb ${m.role === "agent" ? "c" : "u"}`, text: m.content })));
+      scroll();
+    });
+    call.on("call_ended", () => { status.textContent = "Call ended"; L.call = null; $("#quick").replaceChildren(); });
+    call.on("error", (err) => { status.textContent = `Call problem: ${err?.message || err}`; L.call = null; });
+    await call.startCall({ accessToken: r.access_token });
+    followCase();
+    $("#quick").replaceChildren(h("button", { class: "help-opt end", onclick: () => call.stopCall() }, "End call"));
+  } catch (e) { status.textContent = `Can't start the call: ${e.message}`; L.call = null; }
+}
+
+function liveBar() {
+  const sel = h("select", { "aria-label": "Signed-in demo customer", onchange: (e) => { L.cid = e.target.value; getHelp(); } },
+    LIVE_CUSTOMERS.map(([id, n]) => h("option", { value: id, selected: id === L.cid, text: `${n} (${id})` })));
+  return h("div", { class: "livebar" }, h("span", { class: "small", text: "Live · signed in as" }), sel,
+    h("button", { class: "btn small primary", text: "Get help", onclick: getHelp }));
+}
+
 function trackOnly(ref) {
   S.ref = ref;
   $("#picker").remove();
@@ -300,10 +408,15 @@ function init() {
   const p = new URLSearchParams(location.search);
   S.speed = Math.min(3, Math.max(0.5, Number(p.get("speed")) || 1));
   document.querySelectorAll(".ph-tabs button").forEach((b) => b.addEventListener("click", () => show(b.dataset.v)));
-  $("#person").addEventListener("click", () => { if (!S.running) play("jordan"); });
+  $("#person").addEventListener("click", () => {
+    if (L.mode === "text") return L.send("I want to talk to a person.");
+    if (!S.running && !L.mode) play("jordan");
+  });
   if (p.get("track")) return trackOnly(p.get("track"));
-  $("#picker").replaceChildren(...Object.entries(SCENES).map(([k, s]) => h("button", { class: "btn small", text: s.label, onclick: () => play(k) })));
-  add(h("p", { class: "muted small", text: embedded ? "Pick a customer in the bar above to start." : "Pick a demo customer above to start a conversation." }));
+  $("#picker").replaceChildren(liveBar(), h("div", { class: "scripted" }, h("span", { class: "small muted", text: "Scripted scenes:" }),
+    ...Object.entries(SCENES).map(([k, s]) => h("button", { class: "btn small", text: s.label, onclick: () => play(k) }))));
+  if (embedded) add(h("p", { class: "muted small", text: "Pick a customer in the bar above to start." }));
+  else getHelp();
   renderCard();
   window.addEventListener("message", (e) => {
     if (e.origin !== location.origin) return;
