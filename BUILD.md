@@ -3,10 +3,10 @@
 This is the current runbook for the implemented dashboard and the presentation-slide submission video. It replaces
 the original backend/Streamlit build brief. The [README](README.md) is the detailed product, API and roadmap reference.
 
-**Source reviewed:** remote `main` at `b6061d7` on 17 Nov 2026 (Brisbane). PR #18 merged the pale rose navigation,
-PR #19 merged automatic `backend/.env` loading and PR #20 merged the selected
-[slide-video plan](docs/video/SHOT_LIST.md). This revision makes `/demo` officer-first with an optional conversation
-preview accessed from Live intake. A merged software feature is separate from a completed live rehearsal or
+**Source reviewed:** remote `main` at `3007368` on 17 Nov 2026 (Brisbane). PR #18 merged pale rose navigation,
+#19 added automatic `.env` loading, #20 merged the [slide-video plan](docs/video/SHOT_LIST.md) and #21 made the demo
+officer-first with an optional conversation preview from Live intake. This revision replaces the bank logo with
+an original headset symbol. A merged software feature is separate from a completed live rehearsal or
 finished video export.
 
 ## What is built
@@ -18,7 +18,7 @@ finished video export.
 | Collaboration and intake | Exclusive officer claims, handoff notes, named completion, stale-revision protection, shared updates and durable unranked drafts |
 | Customer experience | `/customer` and `/demo`: scripted fallback scenes and live Retell text/voice entry points |
 | Persistence | SQLite cases, claims, drafts, audit events, mock account changes and protocol versions |
-| Branding | Westpac SpeedQ, pale rose sidebar and restrained red actions; logo permission status is recorded in [BRANDING.md](BRANDING.md) |
+| Branding | Westpac SpeedQ name, original headset with one microphone, pale rose sidebar and restrained red actions; the bank logo is removed in this revision. See [BRANDING.md](BRANDING.md) |
 | Submission video | Narrated presentation slides using diagrams and prototype screenshots; deck and export remain team deliverables |
 
 The account data is synthetic: six customers, 31 transactions, six card records and 31 protocols. Account evidence
@@ -112,14 +112,14 @@ Use [docs/video/SHOT_LIST.md](docs/video/SHOT_LIST.md) for the slide sequence, s
 checks. The production work is a deck, speaker notes, current screenshots and a recorded slide presentation. Confirm
 competition duration/submission rules with the organisers; historical deadlines are not current instructions.
 
-Keep a PDF of the deck and the exported video available as fallbacks. Logo use follows [BRANDING.md](BRANDING.md),
+Keep a PDF of the deck and the exported video available as fallbacks. Use the original headset and fresh captures following [BRANDING.md](BRANDING.md),
 and researched content follows [the source notes](backend/data/PROTOCOLS_SOURCES.md).
 
 ## Remaining work
 
 - Finish the slide deck, narration, export and submission checks.
 - Rehearse real Retell text/voice and the customer → officer → customer outcome on the demo machine.
-- Confirm the competition's scope of logo/content permission and manual usability/accessibility feedback.
+- Replace older bank marks in the slide deck with the original headset, refresh captures and confirm separate content guidance and usability/accessibility feedback.
 - Evaluate further dashboard ideas against officer needs; see [FEATURE_REVIEW.md](FEATURE_REVIEW.md).
 - Treat SSO/MFA, role separation, shared state across workers and real bank integrations as production work beyond
   this prototype. Surge mode and additional workload/timeline/preference views remain candidates, not merged features.

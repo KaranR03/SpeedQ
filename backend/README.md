@@ -11,9 +11,10 @@ needed. **Load sample cases** adds a synthetic queue without resetting existing 
 is optional. The API/schema reference at `/docs` is self-hosted and follows the same staff access controls.
 
 **Status reviewed 17 Nov 2026 (Brisbane):** backend case handling, Prorio, persistence, care insights, shared officer
-claims and live intake are implemented on `main`. Westpac SpeedQ branding and the local GEL mark are merged through
-PR #14; the live Clario/Retell integration (#13), pale dashboard navigation (#18) and automatic `.env` loading (#19)
-are included in the verified `main` at `a184be1`. This remains a single-worker prototype.
+claims and live intake are implemented on `main`. Westpac SpeedQ naming/palette (#14), live Clario (#13), pale
+navigation (#18), `.env` loading (#19) and the officer-first demo (#21) are included in the reviewed `main` at
+`3007368`. This revision serves an original customer-service headset asset instead of the bank logo. The application
+remains a single-worker prototype.
 The current status and remaining dashboard/integration work are tracked in the
 [main README](../README.md#remaining-work-and-next-iterations). The [build guide](../BUILD.md) and
 [presentation-slide plan](../docs/video/SHOT_LIST.md) describe current delivery work.
