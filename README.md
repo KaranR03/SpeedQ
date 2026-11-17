@@ -2,7 +2,7 @@
 
 **Team Astars · Westpac Innovation & Coding Competition (Hackathon) 2026**
 
-Formerly **Beacon Assist**. The team selected the original dashboard layout and partitions, with a restrained
+The team selected the original dashboard layout and partitions, with a restrained
 Westpac-red and neutral palette and the requested Westpac mark. The alternative dashboard concept was not adopted.
 This remains an independent hackathon prototype; see [branding and asset provenance](BRANDING.md).
 
