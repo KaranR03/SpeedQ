@@ -54,6 +54,7 @@ The marketing photographs, large hero headings and multi-column website footer a
 work area. Compact and mobile layouts keep their existing responsive structure.
 
 The sidebar and favicons use an original, single-colour customer-service headset with one boom microphone. The
+sidebar embeds the SVG in the page so a failed external icon request cannot produce a broken-image placeholder. The
 32px SVG view box, rounded strokes and 30px display size keep it legible without a platform-dependent emoji font.
 The former bank-logo file and its active references are removed. The 42px white badge and existing text wordmark
 remain restrained; the layout and case workflow are unchanged.

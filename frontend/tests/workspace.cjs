@@ -144,8 +144,14 @@ async function review(page, name) {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.route("**/assets/support-headset.svg", (route) => route.abort());
   await page.goto(base);
   await settled(page);
+  check(
+    await page.locator(".brand-mark svg").isVisible(),
+    "Headset stays visible when the separate icon asset cannot load",
+  );
+  await page.unroute("**/assets/support-headset.svg");
   check(
     await page.locator("#empty-state").isVisible(),
     "Empty queue should have a clear empty state",

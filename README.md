@@ -39,7 +39,8 @@ Remote `main` was verified at `3007368`: the **Westpac SpeedQ branding** (#14), 
 ([#18](https://github.com/bharath-blazecode/Team-Astars/pull/18)), **live Clario integration** (#13) and
 **automatic `.env` loading** ([#19](https://github.com/bharath-blazecode/Team-Astars/pull/19)) are merged.
 The officer-first demo is also merged via [#21](https://github.com/bharath-blazecode/Team-Astars/pull/21).
-This revision removes the former bank-logo asset and uses an original headset symbol in the sidebar and favicons.
+The former bank-logo asset is removed. The original headset is embedded directly in the sidebar to avoid a broken
+image when an icon request fails; its standalone asset supplies the favicons.
 The project name and independent-prototype disclosure remain; see [current branding](BRANDING.md).
 **Further feature brainstorming, UI appearance refinements and officer usability testing remain open.** The project
 is a working prototype, not a finished banking service. See [build status](#build-status-what-this-repo-runs-today)
