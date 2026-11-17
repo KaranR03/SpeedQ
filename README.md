@@ -34,12 +34,18 @@ approval, so proposals improve over time.
 
 **Current delivery status — reviewed 17 Nov 2026 (Brisbane):** the officer **dashboard** and core case workflow are
 implemented and merged into `main`, including graphical insights, shared officer ownership and live intake.
-The **Westpac SpeedQ name, red/neutral palette and Westpac mark are also merged**, via
-[PR #14](https://github.com/bharath-blazecode/Team-Astars/pull/14). Remote `main` was verified at `37091a8`, containing
-the complete branding commit `d057af0`; the original dashboard layout is retained.
+Remote `main` was verified at `a184be1`: the **Westpac SpeedQ branding** (#14), **light sidebar and controls**
+([#18](https://github.com/bharath-blazecode/Team-Astars/pull/18)), **live Clario integration** (#13) and
+**automatic `.env` loading** ([#19](https://github.com/bharath-blazecode/Team-Astars/pull/19)) are merged.
+The original dashboard layout is retained. Logo provenance is recorded; competition permission is not established
+by the code package's licence. See [logo use](BRANDING.md#logo-use-in-the-dashboard-and-presentation).
 **Further feature brainstorming, UI appearance refinements and officer usability testing remain open.** The project
 is a working prototype, not a finished banking service. See [build status](#build-status-what-this-repo-runs-today)
 and [remaining work](#remaining-work-and-next-iterations) for the implemented, planned and unverified areas.
+
+**Submission format:** a narrated presentation-slide video with diagrams and screenshots from the prototype.
+The [slide plan](docs/video/SHOT_LIST.md) is the working outline; the deck, narration and final export remain team
+production tasks. [BUILD.md](BUILD.md) is the current setup and rehearsal guide.
 
 ---
 
@@ -521,7 +527,7 @@ before ranking a scam case. Timings are demonstration targets; simulated protect
 
 ## Build status: what this repo runs today
 
-Reviewed against remote `main` at [`37091a8`](https://github.com/bharath-blazecode/Team-Astars/commit/37091a8b349b7e71f6c72eb3a7a70c48c89a7b77),
+Reviewed against remote `main` at [`a184be1`](https://github.com/bharath-blazecode/Team-Astars/commit/a184be127178258233f2e41545309024dad53637),
 17 Nov 2026 (Brisbane). **Implemented** below means present in this hackathon prototype, not production-ready or
 connected to real banking systems.
 
@@ -530,18 +536,20 @@ connected to real banking systems.
 | **Prorio**, `backend/prorio/` | Implemented | Deterministic 0–100 scoring, bands, gates G1 and G3–G7, ownership-checked account evidence, cross-case payee checks, protocol proposals and an execution trace. G2's protective interaction is simulated in the customer demo |
 | Backend case workflow | Implemented | Final-card intake, priority queue, decisions, manual outcomes, re-ranking, audit trail, customer status and corrections |
 | **Officer dashboard**, `frontend/` | Core implemented; iteration open | Search/filter, concise preview, focused review, evidence/context/activity, completed work, protocol library and learning loop. Further appearance work and new feature ideas are still planned |
-| **Westpac SpeedQ branding** | Base merged in PR #14; visual refinement in this revision | Original dashboard partitions and local GEL mark retained; pale rose navigation, dark labels, red outlined secondary buttons and aligned panel gutters refine the accepted layout |
+| **Westpac SpeedQ branding** | Merged in PR #14; light navigation/controls in PR #18 | Original dashboard partitions and local GEL mark retained; pale rose navigation, dark labels, red outlined secondary buttons and aligned panel gutters refine the accepted layout |
 | **Care insights** and case context | Implemented | Graphical urgency/issue/stage/age/decision views, response watch, evidence coverage, score components, masked customer records and an explicit copyable handoff brief |
 | **Multi-officer collaboration** | Implemented | Exclusive claim/release, handoff notes, Mine filter, named completion, live updates and revision checks against stale decisions; limited to one backend worker |
-| **Live intake** | Implemented for scripted demo | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Clario (Retell voice and chat) streams the forming card through signed tools |
+| **Live intake** | Implemented for scripted scenes and signed Retell tools | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Clario (Retell voice and chat) streams the forming card through signed tools |
 | **Customer app** and **side-by-side demo** | Implemented, scripted | Five customer scenes, simulated biometrics/protection, read-back, corrections, live case tracker and outcomes at `/customer` and `/demo` |
 | **Protocol Database** and learning loop | Implemented | 31 sourced protocols, decision counts, repeated suggestions, owner approval/rejection, version history and rollback; production role separation is still missing |
 | SQLite persistence | Implemented | Cases, audit logs, claims/revisions, intake drafts, mock account changes, protocol suggestions and approved versions survive restarts |
 | Staff access and browser controls | Prototype controls implemented | Local-only unauthenticated demo; optional individual Basic accounts, server-derived audit identity, intake secret checks, same-origin checks and CSP. SSO/MFA and production roles remain open |
 | Automated verification | Available in repo | Prorio/API/persistence checks, workspace/insights/collaboration backend tests, and two browser suites. The previous implementation run passed 90 browser checks; see [Tests](#tests) to rerun |
 | Legacy Streamlit console and original officer page | Historical reference | Not the recommended dashboard and not equivalent to its current authentication or collaboration controls |
-| **Live Clario** (Retell voice and chat), `backend/clario_live.py` | Implemented; live Retell test per demo machine | In-app Get help → Text or Call; signed Retell tools for look-up, live draft card, confirmation and correction; customer fixed by the backend. Retell agent settings (prompt, 406-page knowledge base, functions) live in Retell, not this repo |
-| Live text chat / language | Through Retell | Live chat is the Retell chat agent; Clario replies in the customer's language. Scripted scenes keep their supplied translations |
+| **Live Clario** (Retell voice and chat), `backend/clario_live.py` | Implemented; live Retell test per demo machine | In-app Get help → Text or Call; signed Retell tools for look-up, live draft card, confirmation and correction; customer fixed by the backend. Retell agent settings (prompt, knowledge base and functions) live in Retell, not this repo |
+| Live text chat / language | Retell integration implemented; language behaviour needs live rehearsal | Live chat uses the Retell chat agent; its language behaviour depends on the externally configured agent. Scripted scenes keep their supplied translations |
+| Live settings | Merged in PR #19 | `backend/.env` loads at startup; existing shell variables take precedence. The example file is tracked; real keys/settings remain private |
+| Submission video | Presentation slides selected; production pending | [Slide sequence, screenshot and narration plan](docs/video/SHOT_LIST.md); no completed deck or video is claimed |
 | Surge mode | Not implemented | An outage protocol exists, but incident grouping and proactive notifications do not |
 
 The merged history includes the team's backend/console work ([#1](https://github.com/bharath-blazecode/Team-Astars/pull/1),
@@ -553,22 +561,18 @@ Prorio ([#7](https://github.com/bharath-blazecode/Team-Astars/pull/7)), dashboar
 ([#10](https://github.com/bharath-blazecode/Team-Astars/pull/10)). These implementation commits are contained in
 `main`. A retained feature branch alone is not evidence of unfinished work.
 
-The subsequent README/status update is merged in [#11](https://github.com/bharath-blazecode/Team-Astars/pull/11).
-The teammate's fix that waits for refreshed insight totals before asserting is merged in
-[#12](https://github.com/bharath-blazecode/Team-Astars/pull/12). The Westpac SpeedQ rename, red palette and requested
-mark are merged in [#14](https://github.com/bharath-blazecode/Team-Astars/pull/14), retaining that fix. The branding
-commit `d057af0` is an ancestor of remote `main` at `37091a8`. The live Clario/Retell integration in
-[#13](https://github.com/bharath-blazecode/Team-Astars/pull/13) is also merged there and retained in this revision.
-Further usability, live-service configuration/rehearsal and production work remains open below.
+The status documentation (#11), insights test correction (#12), live Clario integration (#13), SpeedQ branding
+(#14), live-test checklist (#15), rename cleanup (#17), light sidebar/control refinement (#18) and `.env` startup
+configuration (#19) are all ancestors of the verified `main` at `a184be1`.
 
-The team's [live Clario end-to-end checklist](LIVE_TEST_CHECKLIST.md) is merged in
-[PR #15](https://github.com/bharath-blazecode/Team-Astars/pull/15) and retained here. Its live-call checks still require
-the configured demo setup; the automated checks use a faked Retell client.
+The older [documentation PR #16](https://github.com/bharath-blazecode/Team-Astars/pull/16) is superseded: its five-file
+patch was carried into #18 as commit `bd4c4f4`, then updated further. Close it as superseded if it is still open;
+its older conflicts do not require another merge to deliver that content.
 
-**Current iteration:** this revision refines the light navigation, button hierarchy and spacing from the team's
-website screenshots. GitHub issue-board and
-PR discussion/status pages were unavailable to this review. Unpushed changes and work in Retell need teammate
-confirmation; the planned items below are not claims that someone is already working on them.
+**This documentation revision** replaces the earlier separate video plan with presentation slides, refreshes the
+current build guide and records logo-use boundaries. The [live Clario checklist](LIVE_TEST_CHECKLIST.md) still needs
+completion on the configured demo machine; automated Clario checks use a faked Retell client. Git history verifies
+merged code, not unpushed work, live Retell settings, a finished slide deck or submission readiness.
 
 ### How Prorio works
 
@@ -606,13 +610,13 @@ they do not require replacing the working dashboard.
 |---|---|---|
 | **Dashboard appearance and usability** | Planned refinement | Gather officer feedback, refine hierarchy/spacing/visual cues and mobile layouts, and manually check keyboard and screen-reader workflows. Automated checks alone do not finish this work |
 | **Dashboard brainstorming features** | Candidates, not implemented | Evaluate a team workload view from current claims, a visual handoff timeline from audit events, saved filter preferences and configurable completion alerts. Select features that help officers choose or finish a case; basic live completion updates already exist |
-| **External voice agent alignment** | Needs teammate verification | Check current issue types, backend bands/`handoff`, unauthorised-vs-disputed charge handling, protection reports and `ESSENTIALS_AT_RISK`; pass a live confirmed-card → officer → customer-outcome test |
-| **Voice transfer and remote demo setup** | Needs teammate verification | Confirm a valid authorised transfer destination and test the handoff. Earlier notes list a placeholder; its current external setting is unknown. Verify HTTPS, allowed hostname and intake secret for the chosen demo URL |
-| **Final rehearsal and submission assets** | Pending team check | Rehearse P1 and P4, correction, multilingual and two-officer handoff scenes; confirm the final video, fallback recording and pitch materials with the team |
-| **Branding and content provenance** | Follow-up recorded | Review the existing [source/copyright notes](backend/data/PROTOCOLS_SOURCES.md) with the mentors, including the separately hosted Retell knowledge base. Repository review cannot establish external permissions |
+| **Live Clario rehearsal and language behaviour** | Integration merged; live verification pending | Complete [LIVE_TEST_CHECKLIST.md](LIVE_TEST_CHECKLIST.md): verify issue types, backend bands/`handoff`, unauthorised-vs-disputed charge handling, protection reports, `ESSENTIALS_AT_RISK`, language behaviour and confirmed-card → officer → customer outcome |
+| **Voice transfer and remote demo setup** | Live verification pending | The documented transfer destination is fictional. A real transfer needs an authorised destination and a successful test. Verify HTTPS, the tunnel hostname and signed tools; configure the intake secret separately if using the final-card webhook |
+| **Presentation-slide video and final rehearsal** | Format selected; deck/export pending | Follow the [slide plan](docs/video/SHOT_LIST.md), capture prototype screenshots, finish narration and export the slide presentation. Rehearse P1/P4, corrections, multilingual and two-officer handoff; confirm submission rules and keep a PDF/video fallback |
+| **Branding and content permission** | Provenance recorded; permission unverified | Check competition rules or obtain permission covering the dashboard logo and slide video; see [BRANDING.md](BRANDING.md). Review the [content source notes](backend/data/PROTOCOLS_SOURCES.md), including the external Retell knowledge base |
 | **Production identity and permissions** | Beyond prototype | Replace Basic accounts with SSO/MFA, customer identity, session controls and separate officer/protocol-owner permissions |
 | **Production shared state and operations** | Beyond prototype | Coordinate claims transactionally across workers, share event transport, and validate backup/restore, monitoring and load behavior |
-| **Surge mode; live text/translation; real banking actions** | Optional future scope | Define and validate each integration separately. Current incident protocols, scripted translations and mock actions do not provide these features |
+| **Surge mode and real banking actions** | Optional future scope | Define and validate each separately. Incident protocols do not provide incident grouping/proactive notifications, and mock banking actions do not execute real transactions. Live Retell chat is already implemented; its behaviour still needs the rehearsal above |
 
 Use [FEATURE_REVIEW.md](FEATURE_REVIEW.md) when choosing new ideas: the current dataset supports case/claim/audit
 visuals, but does not support credible fraud predictions, staffing forecasts, recovery totals or satisfaction metrics.
@@ -676,33 +680,41 @@ framing for the demo; other sites cannot frame them. The root `/` remains the st
 
 ### Recording the video
 
-1. Open `/demo` in a full-screen browser window, press **Reset demo**, and set the speed (1× for the video).
-2. Play the scenes in this order: **Maria** (protected in under a minute, jumps to P1), **Minh** (Vietnamese; adds to
-   his card and the officer sees it live), **Sam** (P4: one click and the AI sends the answer), **Priya**, **Jordan**
-   ("talk to a person").
-3. Between scenes, work the officer side: choose **Review case** for Maria, show **Evidence** and **Customer context**,
-   then **Review & approve** and confirm. Review Sam's AI-after-approval plan: his card on the left reaches Done.
-   Open Minh and **Modify plan** (add a callback) to create a suggestion, then show **Learning loop** and **Protocol library**.
-4. To show a lead approving a new protocol version in one go, start the backend with `NRY_SUGGEST_THRESHOLD=1`.
+The selected format is a **narrated presentation-slide video**. Use the
+[slide sequence and production checklist](docs/video/SHOT_LIST.md) for the deck, screenshots, speaker notes and
+export. Its approximate six-minute target is a working plan; verify the actual competition limit and deadline.
 
-The caption strip explains each scene. Conversation lines and supplied translations are scripted; backend lookups,
-draft/case updates, ranking and officer decisions operate on the local prototype.
+1. Build the deck in the team's preferred presentation editor. Use short labels and simple diagrams to explain the
+   problem, confirmed card, evidence-based ranking, officer control and customer outcome.
+2. Capture current screenshots from `/officer`, `/customer` and `/demo`. Use a disposable rehearsal database before
+   **Reset demo**; **Load sample cases** is additive. Crop to the interaction and label scripted scene captures.
+3. Show Maria's draft → confirmation → priority reasons → officer review → outcome. Add Sam's delivery example and
+   one shared-officer or insights screenshot only if they help the story. Use the score/band visible in the actual run.
+4. A learning-loop capture can use `NRY_SUGGEST_THRESHOLD=1` in the rehearsal environment, followed by a restart. Show
+   a human approving a suggestion; do not describe this as automatic model retraining.
+5. Record narration over the slide deck, add captions/transcript, export and watch the complete video on another
+   device. Keep a PDF deck backup. Confirm any Westpac logo use against [BRANDING.md](BRANDING.md).
+
+`/demo` remains available for gathering screenshots and for the on-site scripted fallback. Its dialogue and supplied
+translations are scripted; backend lookups, drafts, ranking and officer decisions operate on the prototype. SafeBlock
+and other banking actions are simulated. Keep illustrative timings separate from measured service claims.
 
 ### The live demo
 
 For the on-site pitch, everything runs on one laptop, exactly as above. Only a live Clario needs the internet.
 
-- **Live Clario = the separately configured Retell agent.** Earlier team notes describe its own language model,
-  voice, language detection and knowledge base; verify the current configuration with its owner. Its key stays in
-  Retell, so no AI key is needed in this repo. Final cards can be sent to `/webhook/retell`.
-  Retell can't reach `localhost`, so open a tunnel (for example `ngrok http 8000`) and use your phone's hotspot, not
-  the venue Wi-Fi. Open `/customer?track=<reference>` to show the customer's live card while the officer works.
+- **Live Clario uses the configured Retell voice/chat agents.** Set the backend's private `RETELL_API_KEY` and agent
+  IDs in `backend/.env`; the key is needed to create sessions and verify signed tools. Check the external prompt,
+  language behaviour and knowledge base with the agent owner. Retell cannot reach `localhost`, so configure an HTTPS
+  tunnel and its allowed hostname. Follow [LIVE_TEST_CHECKLIST.md](LIVE_TEST_CHECKLIST.md). The final-card webhook is
+  a separate intake alternative. Only the scripted fallback runs without an external AI key.
 - **Hand a judge the phone.** Remote access needs HTTPS, `NRY_STAFF_PASSWORD` or `NRY_STAFF_ACCOUNTS`, the intended hostname in
   `NRY_ALLOWED_HOSTS`, and `NRY_WEBHOOK_SECRET` for intake. The default demo permits only loopback clients.
   This remains a shared staff demonstration, not customer authentication for a deployed bank service.
 - **Fallback.** If the internet or Retell fails, the scripted scenes on `/demo` still run the real backend, and the
-  recorded video is the last resort.
-- **Before going on stage:** reset the demo, run one scene end to end, check the officer name, and close other tabs.
+  exported slide video and PDF deck are available as presentation fallbacks.
+- **Before going on stage:** use the disposable rehearsal database, reset only if needed, run one scene end to end,
+  check the officer name, and close other tabs.
 
 ### 2. Optional: legacy Streamlit dashboard
 
@@ -962,7 +974,7 @@ Run from the `backend` folder with its environment switched on.
 | `python test_db.py` | Restarts the backend for real and checks nothing was lost, including approved protocol versions |
 | `python test_workspace.py` | Website assets, local-only demo access, staff authentication, protected intake, audit identity, origin/host checks and additive sample loading |
 | `python test_insights.py` | Empty and populated analytics, payment deduplication, customer ownership, clocks, stages, response-watch boundaries and context access control |
-| `python test_clario_live.py` | Live Clario: Retell signatures, customer fixed by the conversation, live draft → ranked card, corrections, chat/call session start, and that tunnelled requests are never treated as local |
+| `python test_clario_live.py` | Retell signatures, conversation-scoped customer, draft → ranked card, corrections, faked chat/call sessions, tunnel restrictions and `.env` loading without overriding existing variables; no real calls |
 | `python test_collaboration.py` | Concurrent claims and decisions, transfers, stale revisions, authenticated identity, draft validation, retry safety and restart recovery |
 
 The API/workspace tests use an in-memory database; persistence checks use a temporary file. They never touch `nry.db`.
@@ -992,7 +1004,8 @@ actual customer scene. Its screenshots include live intake, mobile intake and th
 ```
 Team-Astars/
 ├── README.md             this file
-├── BUILD.md              the original build brief (earlier plan, kept for reference)
+├── BUILD.md              current build, setup and delivery guide
+├── docs/video/SHOT_LIST.md  presentation-slide sequence, narration and export checklist
 ├── backend/
 │   ├── main.py           the web service and its endpoints
 │   ├── prorio/           Prorio, the Priority and Protocol agent
@@ -1014,7 +1027,8 @@ Team-Astars/
 │   ├── db.py             saving to and loading from the SQLite file
 │   ├── data/             customers.json, transactions.json, cards.json (made-up data),
 │   │                     protocols.json (Protocol Database), PROTOCOLS_SOURCES.md (its sources and copyright rules)
-│   ├── test_api.py  test_db.py  test_workspace.py  test_insights.py  test_collaboration.py
+│   ├── test_api.py  test_db.py  test_workspace.py  test_insights.py  test_collaboration.py  test_clario_live.py
+│   ├── .env.example     tracked live-settings template; real .env remains private
 │   ├── requirements.txt
 │   └── README.md         extra ready-to-paste test commands
 ├── frontend/             current officer dashboard: self-hosted HTML, CSS and JavaScript; no build step
@@ -1066,8 +1080,9 @@ and behavior need separate validation; they are not established by the local dem
 - **Further work is still open:** dashboard brainstorming and appearance refinement, manual usability/accessibility
   review, external Retell verification and optional integrations are tracked in
   [Remaining work](#remaining-work-and-next-iterations). Implemented core flows do not mean the dashboard is final.
-- **External voice settings are unverified.** Earlier notes contain a placeholder transfer number; verify the current
-  Retell setup with its owner before claiming a working voice handoff.
+- **Live service and submission readiness need verification.** The external Retell setup and fictional transfer
+  destination do not establish a working real phone handoff. The slide deck/export and competition logo permission
+  also need team confirmation; use the linked checklists before marking them complete.
 
 ---
 

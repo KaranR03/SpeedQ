@@ -14,38 +14,41 @@ explains how it was built and the rules for changing it.
 
 ## The copyright position (read before adding anything)
 
-Westpac's website terms say the information on westpac.com.au is for **personal reference only** and may not be
-reproduced, distributed, or incorporated into another document or material
-([terms, clause 2.1](https://www.westpac.com.au/terms-and-conditions/)). Westpac's robots.txt allows crawlers to visit,
-but that only covers access; it doesn't give permission to copy.
+The team's source review on 16 Nov 2026 recorded restrictions on reproducing or redistributing Westpac website
+content ([website terms](https://www.westpac.com.au/terms-and-conditions/)). The current review could not reopen those
+terms because the cloud network blocks that host. Verify the current terms and applicable competition permission;
+this document records provenance and editorial safeguards, not legal clearance. Crawler access does not itself
+authorise reuse.
 
 So the database follows these rules:
 
-1. **Facts, not wording.** Facts (for example "a temporary card lock lasts up to 15 days", or "most scam cases are
-   resolved within 21 days") are not owned by anyone. The *wording* on the page is. We restate facts in our own words.
-2. **No copied text.** We checked every Westpac source page against the file: **no run of 8 or more words matches**
-   any of the 44 Westpac pages (checked 16 Nov 2026). Keep it that way.
-3. **Link, don't copy.** Each source is a title and a link. Linking is fine.
+1. **Summarise in our own words.** Keep facts distinct from source wording and check that each proposed reuse is
+   within the applicable terms or permission. Paraphrasing alone is not a permission check.
+2. **Avoid copied passages.** The earlier 16 Nov 2026 review reported no matching run of eight or more words across
+   44 Westpac pages. That was an editorial overlap check, not a legal threshold or licence; it was not rerun here.
+3. **Cite sources.** Each source has a title and link so readers can check the current guidance.
 4. **No page dumps in the repo.** Don't commit crawled pages, screenshots of Westpac pages or PDFs. The team's
    requested Westpac SpeedQ branding uses one static GEL mark with its provenance and disclosure documented in
    [BRANDING.md](../../BRANDING.md); this does not authorise copying other site assets or content.
 5. **No phone numbers or email addresses** from Westpac pages; they go out of date. Point to the source page instead.
 6. **Not an endorsement.** Don't present this as Westpac-approved. It is a hackathon prototype using synthetic data.
 
-This is the team's careful reading, not legal advice. Two follow-ups are worth doing:
+Two follow-ups remain open:
 
-- **Ask the Westpac mentors** whether they are comfortable with summarised public help content in a hackathon repo.
-  They are the organisers, so their answer settles it.
-- **The Retell voice agent's knowledge base** holds 406 crawled westpac.com.au pages in a third-party service. That is
-  closer to "reproducing" than this file is. If the voice agent is kept, ask the mentors about it too, or replace it
-  with this summarised database.
+- **Record the applicable permission.** Ask the competition organisers or Westpac's authorised permission owner
+  about public help summaries, the dashboard logo and the recorded slide presentation. Mentor feedback is useful;
+  record the rule or authorisation and its scope rather than treating informal approval as blanket permission.
+- **Check the external Retell knowledge base.** Earlier team notes report 406 crawled Westpac pages in a third-party
+  service; its current contents and permission were not inspected in this repository review. Confirm authorised
+  reuse with its owner, or replace unsupported material with content the team is permitted to use.
 
 ## The Westpac design system (for the UI)
 
-The organisers listed Westpac's GEL design system as a hackathon resource. The `@westpac/ui` package on npm is
-published under the **MIT licence** (checked 16 Nov 2026), so installing it is fine. The GEL-next GitHub repository
-itself has no licence file, so install the package rather than copying files from that repo. Don't use Westpac logos
-in a way that suggests Westpac built or approved the product.
+The published [`@westpac/ui` 1.21.0 metadata](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/package.json) lists
+**MIT** (rechecked 17 Nov 2026). The dashboard does not install that UI package; its local static mark is documented
+in [BRANDING.md](../../BRANDING.md). Code-package licensing and permission to use the Westpac trademark are separate.
+The applicable competition rules or permission must cover the dashboard and recorded presentation; that permission
+has not been verified here. Keep the independent Team Astars attribution and avoid implying bank approval.
 
 ## How the database is meant to change ("officers teach, leads approve")
 

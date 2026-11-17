@@ -12,16 +12,23 @@ is optional. The API/schema reference at `/docs` is self-hosted and follows the 
 
 **Status reviewed 17 Nov 2026 (Brisbane):** backend case handling, Prorio, persistence, care insights, shared officer
 claims and live intake are implemented on `main`. Westpac SpeedQ branding and the local GEL mark are merged through
-PR #14; the live Clario/Retell integration is merged through PR #13. Both are included in the verified `main`
-at `37091a8`. This remains a single-worker prototype.
+PR #14; the live Clario/Retell integration (#13), pale dashboard navigation (#18) and automatic `.env` loading (#19)
+are included in the verified `main` at `a184be1`. This remains a single-worker prototype.
 The current status and remaining dashboard/integration work are tracked in the
-[main README](../README.md#remaining-work-and-next-iterations); the external Retell configuration is not stored here.
+[main README](../README.md#remaining-work-and-next-iterations). The [build guide](../BUILD.md) and
+[presentation-slide plan](../docs/video/SHOT_LIST.md) describe current delivery work.
+
+For live Clario, copy `.env.example` to `.env` only if you do not already have a settings file. Fill in the private
+Retell key and verify the agent IDs and tunnel hostname. The backend loads `.env` at startup; existing environment
+variables win. Real credentials remain git-ignored. Restart after changes and follow
+[the live checklist](../LIVE_TEST_CHECKLIST.md); the external agent prompts/functions are configured in Retell.
 
 Checks: `python -m prorio.selftest` (Prorio's scoring, gates and proposals), `python test_api.py` (the API end to end),
 `python test_db.py` (persistence across a restart), `python test_workspace.py` (dashboard integration and security).
 `python test_insights.py` covers the analytics, customer scope, payment totals and evidence/live-clock boundaries.
 `python test_collaboration.py` covers officer claim races, ownership transfer, stale decisions, identity, drafts and restart recovery.
-`python test_clario_live.py` checks signed Retell tools and customer session scope with a faked client, without live calls.
+`python test_clario_live.py` checks signed Retell tools, customer session scope and `.env` precedence with a faked
+client, without live calls.
 Browser tests: `cd ../frontend && npm ci && npm test` (Node 22.12+ and Chromium). All customer data is synthetic.
 
 Staff endpoints reject remote clients in local demo mode. Set `NRY_STAFF_PASSWORD` and optionally `NRY_STAFF_USER`

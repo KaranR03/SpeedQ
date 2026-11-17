@@ -4,8 +4,8 @@ The officer's first question is “who needs help next?” The first screen answ
 four live counts and a short preview of one customer. The interface never invents response-time statistics or case data.
 
 **Current state:** the core dashboard, visual insights and shared ownership/live intake are implemented on `main`.
-The Westpac SpeedQ red branding is merged through PR #14, and live Clario through PR #13; both were verified in
-`main` at `37091a8` on 17 Nov 2026 (Brisbane).
+Westpac SpeedQ branding (#14), live Clario (#13), pale navigation/controls (#18) and automatic live-settings loading
+(#19) were verified in `main` at `a184be1` on 17 Nov 2026 (Brisbane).
 The appearance and feature set remain open to further iteration;
 see the [remaining work in README](README.md#remaining-work-and-next-iterations). This document describes current
 behavior rather than declaring the design final.
@@ -53,8 +53,11 @@ boundaries. This is not a reproduction of a Westpac site or private staff app. N
 remote runtime assets or UI packages are loaded. The interface retains Team Astars, synthetic-data and independent
 hackathon prototype disclosures.
 
-These choices reduce copying and affiliation risks; they do not constitute legal clearance. Follow the competition's
-brand-use rules and obtain permission before representing the prototype as an official bank service.
+Logo use in the dashboard and recorded presentation requires checking the applicable competition rules or
+permission; [BRANDING.md](BRANDING.md#logo-use-in-the-dashboard-and-presentation) records that permission is currently
+unverified. The team has selected a narrated [presentation-slide video](docs/video/SHOT_LIST.md), using original
+diagrams and prototype screenshots. Asset provenance and an independent-prototype disclosure do not establish brand
+permission or official endorsement.
 
 ## Accessibility and resilience
 
@@ -69,8 +72,9 @@ brand-use rules and obtain permission before representing the prototype as an of
 
 The new interface is served by FastAPI on the same origin as its APIs, avoiding a separate frontend server and CORS
 exceptions. All API-derived text is inserted as text nodes; source links must use HTTPS and cannot embed credentials.
-There are no inline scripts or event handlers. A strict CSP limits scripts, styles and connections to the same origin;
-framing, MIME sniffing, unnecessary browser permissions and caching are restricted. API documentation is self-hosted.
+There are no inline scripts or event handlers. A strict CSP keeps scripts and styles self-hosted; only `/customer`
+has the extra Retell/media connections and microphone access for live Clario. The officer workspace uses same-origin
+connections. Framing, MIME sniffing, unnecessary permissions and caching are restricted. API documentation is self-hosted.
 
 The default synthetic-data demo binds to loopback and rejects remote staff clients. Setting `NRY_STAFF_PASSWORD`
 or the distinct-account mapping `NRY_STAFF_ACCOUNTS` enables Basic authentication for all staff pages and APIs,
@@ -118,9 +122,10 @@ updates invalidate open approval dialogs rather than silently replacing their co
 case controls, named completion and updated counts through a same-origin event stream, with backup refresh on failure.
 
 Unconfirmed cards live in a separate draft store and **Live intake** view. Facts arrive from the customer demo at the
-point they are collected, with backend-derived signals kept separate from caller reports. No score or executable plan
-appears until confirmation. The intake handoff then follows the real queued, assigned and completed case. The scripted
-customer demo is labelled; this does not claim a new live language-model or Retell progress integration.
+point they are collected, with backend-derived signals kept separate from caller reports. Signed live Clario tools
+also update drafts and submit confirmed cards through `backend/clario_live.py`. No score or executable plan appears
+until confirmation. The intake handoff then follows the queued, assigned and completed case. Scripted scenes remain
+labelled; the separate live Retell integration requires the configured agents and an end-to-end rehearsal.
 
 Local demo identities are per-tab simulations. Configured Basic accounts have distinct server-derived identities;
 neither body-supplied names nor demo headers override them. Claims and draft revisions survive a restart. The deployment
