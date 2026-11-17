@@ -296,6 +296,9 @@ const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo", "Scam in progress"], ["CUST-
   ["CUST-003", "Priya Sharma", "Unrecognised $89 charge"], ["CUST-004", "Minh Nguyen", "Missing rent payment · Tiếng Việt"],
   ["CUST-005", "Alex", "Replacement card on its way"], ["CUST-006", "Jordan Lee", "Locked out of online banking"]];
 const L = { cid: "CUST-002", mode: null, conv: null, call: null, poll: null };
+// Clario's chat replies may use **bold**: show it as bold, built from text nodes so nothing is parsed as HTML.
+const clarioLine = (text) => h("div", { class: "msgb c" },
+  String(text).split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h("b", { text: part }) : part)));
 
 function liveReset() {
   if (L.call) { try { L.call.stopCall(); } catch { /* already ended */ } }
@@ -340,7 +343,7 @@ async function liveText() {
     const r = await api("/clario/session/chat", { customer_id: L.cid });
     L.conv = r.conversation_id;
     typing.remove();
-    r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
+    r.messages.forEach((m) => add(clarioLine(m)));
   } catch (e) { typing.remove(); return add(h("div", { class: "banner err", text: `Can't reach Clario: ${e.message}` })); }
   const input = h("input", { class: "composer-in", placeholder: "Message Clario", "aria-label": "Message Clario", maxlength: "2000" });
   const send = async (text) => {
@@ -352,7 +355,7 @@ async function liveText() {
     try {
       const r = await api(`/clario/session/chat/${encodeURIComponent(L.conv)}`, { content: text });
       t.remove();
-      r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
+      r.messages.forEach((m) => add(clarioLine(m)));
       if (r.case_reference) filed(r.case_reference);
     } catch (e) { t.remove(); add(h("div", { class: "banner err", text: `Message not sent: ${e.message}` })); }
   };
