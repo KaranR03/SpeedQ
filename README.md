@@ -790,16 +790,13 @@ Retell (Clario) ── signed POST /retell/tools/{lookup_customer|update_card|su
 
 ### Running it live
 
-1. Start the backend with the Retell settings (never commit them):
-
-   ```bash
-   export RETELL_API_KEY=...            # Retell dashboard → Settings → API keys
-   export RETELL_VOICE_AGENT_ID=agent_... RETELL_CHAT_AGENT_ID=agent_...
-   uvicorn main:app --host 127.0.0.1 --port 8000
-   ```
+1. Copy `backend/.env.example` to `backend/.env` and fill in `RETELL_API_KEY` (Retell dashboard → Settings → API
+   keys); the agent IDs are already there. `backend/.env` is git-ignored: share it with the team privately, never in
+   git. The backend reads it on start (variables already set in your shell win), then run
+   `uvicorn main:app --host 127.0.0.1 --port 8000` as usual.
 
 2. Retell must reach the tool endpoints, so open a tunnel: `ngrok http 8000`. Add the tunnel's hostname to
-   `NRY_ALLOWED_HOSTS` (for example `localhost,127.0.0.1,abc123.ngrok-free.app`). Requests through the tunnel are
+   `NRY_ALLOWED_HOSTS` in `backend/.env` (for example `localhost,127.0.0.1,abc123.ngrok-free.app`). Requests through the tunnel are
    **never treated as local**: only the signed Retell tools and secret-protected intake work through it; the dashboard
    and customer app stay on `localhost` unless staff authentication is configured.
 3. In both Retell agents, point the four custom functions at `https://<tunnel>/retell/tools/<name>`: method **POST**,

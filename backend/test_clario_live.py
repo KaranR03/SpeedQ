@@ -118,3 +118,14 @@ assert c.post("/retell/tools/lookup_customer", content=r.request.content,
 assert c.post("/webhook/retell", json={"customer_id": "CUST-002", "issue_type": "GENERAL_ENQUIRY"},
               headers=fwd).status_code == 503   # remote intake needs NRY_WEBHOOK_SECRET
 print("Tunnel OK")
+
+# backend/.env: shared settings load at startup, but anything already in the environment wins
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
+from main import _load_env_file  # noqa: E402
+with tempfile.TemporaryDirectory() as d:
+    f = Path(d) / ".env"
+    f.write_text("# comment\nCLARIO_TEST_A='from file'\nRETELL_VOICE_AGENT_ID=agent_from_file\nnot a setting\n")
+    _load_env_file(f)
+assert os.environ.pop("CLARIO_TEST_A") == "from file" and os.environ["RETELL_VOICE_AGENT_ID"] == "agent_voice"
+print(".env OK")
