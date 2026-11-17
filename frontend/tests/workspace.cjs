@@ -190,8 +190,22 @@ async function review(page, name) {
     (await page.locator(".insight-metric").count()) === 4,
     "Live insight summary cards",
   );
+  // The insights panel refreshes a moment after the chart first appears (it briefly shows the
+  // empty-queue "$0.00"), so wait for the amount instead of reading it the instant it renders.
   check(
-    (await page.locator("#insights-content").innerText()).includes("$5,539.00"),
+    await page
+      .waitForFunction(
+        () =>
+          document
+            .getElementById("insights-content")
+            .innerText.includes("$5,539.00"),
+        null,
+        { timeout: 5000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      ),
     "Owned linked outgoings reconcile with sample data",
   );
   check(
