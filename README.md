@@ -49,7 +49,7 @@ and [remaining work](#remaining-work-and-next-iterations) for the implemented, p
 - [Build status: what this repo runs today](#build-status-what-this-repo-runs-today)
 - [Remaining work and next iterations](#remaining-work-and-next-iterations)
 - [Run it](#run-it)
-- [Voice channel (optional)](#voice-channel-optional)
+- [Live Clario (Retell voice and chat)](#live-clario-retell-voice-and-chat)
 - [Reference: backend endpoints](#reference-backend-endpoints)
 - [Where data is kept](#where-data-is-kept)
 - [Settings](#settings)
@@ -521,15 +521,15 @@ connected to real banking systems.
 | **Officer dashboard**, `frontend/` | Core implemented; iteration open | Search/filter, concise preview, focused review, evidence/context/activity, completed work, protocol library and learning loop. Further appearance work and new feature ideas are still planned |
 | **Care insights** and case context | Implemented | Graphical urgency/issue/stage/age/decision views, response watch, evidence coverage, score components, masked customer records and an explicit copyable handoff brief |
 | **Multi-officer collaboration** | Implemented | Exclusive claim/release, handoff notes, Mine filter, named completion, live updates and revision checks against stale decisions; limited to one backend worker |
-| **Live intake** | Implemented for scripted demo | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Retell progress still needs integration |
+| **Live intake** | Implemented for scripted demo | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Clario (Retell voice and chat) streams the forming card through signed tools |
 | **Customer app** and **side-by-side demo** | Implemented, scripted | Five customer scenes, simulated biometrics/protection, read-back, corrections, live case tracker and outcomes at `/customer` and `/demo` |
 | **Protocol Database** and learning loop | Implemented | 31 sourced protocols, decision counts, repeated suggestions, owner approval/rejection, version history and rollback; production role separation is still missing |
 | SQLite persistence | Implemented | Cases, audit logs, claims/revisions, intake drafts, mock account changes, protocol suggestions and approved versions survive restarts |
 | Staff access and browser controls | Prototype controls implemented | Local-only unauthenticated demo; optional individual Basic accounts, server-derived audit identity, intake secret checks, same-origin checks and CSP. SSO/MFA and production roles remain open |
 | Automated verification | Available in repo | Prorio/API/persistence checks, workspace/insights/collaboration backend tests, and two browser suites. The previous implementation run passed 90 browser checks; see [Tests](#tests) to rerun |
 | Legacy Streamlit console and original officer page | Historical reference | Not the recommended dashboard and not equivalent to its current authentication or collaboration controls |
-| External **Clario / Retell** voice agent and knowledge base | Team verification needed | Earlier notes describe a separate agent and 406 crawled pages. Current prompt, knowledge base, transfer destination and live end-to-end behavior cannot be verified from this repository |
-| Live language-model text chat / automatic translation | Not implemented here | The supplied text scenes and translations are scripted; a preferred-language field is not a translation integration |
+| **Live Clario** (Retell voice and chat), `backend/clario_live.py` | Implemented; live Retell test per demo machine | In-app Get help → Text or Call; signed Retell tools for look-up, live draft card, confirmation and correction; customer fixed by the backend. Retell agent settings (prompt, 406-page knowledge base, functions) live in Retell, not this repo |
+| Live text chat / language | Through Retell | Live chat is the Retell chat agent; Clario replies in the customer's language. Scripted scenes keep their supplied translations |
 | Surge mode | Not implemented | An outage protocol exists, but incident grouping and proactive notifications do not |
 
 The merged history includes the team's backend/console work ([#1](https://github.com/bharath-blazecode/Team-Astars/pull/1),
@@ -582,7 +582,6 @@ they do not require replacing the working dashboard.
 | **Dashboard appearance and usability** | Planned refinement | Gather officer feedback, refine hierarchy/spacing/visual cues and mobile layouts, and manually check keyboard and screen-reader workflows. Automated checks alone do not finish this work |
 | **Dashboard brainstorming features** | Candidates, not implemented | Evaluate a team workload view from current claims, a visual handoff timeline from audit events, saved filter preferences and configurable completion alerts. Select features that help officers choose or finish a case; basic live completion updates already exist |
 | **External voice agent alignment** | Needs teammate verification | Check current issue types, backend bands/`handoff`, unauthorised-vs-disputed charge handling, protection reports and `ESSENTIALS_AT_RISK`; pass a live confirmed-card → officer → customer-outcome test |
-| **Live card creation from Retell** | Integration pending | Wire the draft start/update/confirm/cancel API into the live agent. Posting only the final-card webhook does not stream a forming card |
 | **Voice transfer and remote demo setup** | Needs teammate verification | Confirm a valid authorised transfer destination and test the handoff. Earlier notes list a placeholder; its current external setting is unknown. Verify HTTPS, allowed hostname and intake secret for the chosen demo URL |
 | **Final rehearsal and submission assets** | Pending team check | Rehearse P1 and P4, correction, multilingual and two-officer handoff scenes; confirm the final video, fallback recording and pitch materials with the team |
 | **Branding and content provenance** | Follow-up recorded | Review the existing [source/copyright notes](backend/data/PROTOCOLS_SOURCES.md) with the mentors, including the separately hosted Retell knowledge base. Repository review cannot establish external permissions |
@@ -733,16 +732,62 @@ staff APIs. Intake requests additionally require the configured `x-webhook-secre
 
 ---
 
-## Voice channel (optional)
+## Live Clario (Retell voice and chat)
 
-The plan is **text first**. Voice reaches Clario only if the existing Retell voice agent is retuned to this design and
-a test call passes in time; otherwise the demo runs by text and voice stays on the roadmap.
+In the customer app (`/customer`), **Get help** offers **💬 Text Clario** or **📞 Call Clario** for the signed-in demo
+customer (pick who is signed in from the bar above the phone). Both talk to the real Clario agents in Retell: text is a
+Retell **chat agent**, voice is a Retell **web call** in the browser. The scripted scenes stay available as the
+repeatable recording and the fallback.
 
-Earlier notes describe a Retell agent built for the old plan. Its current prompt and deployment are outside this
-repo, so check alignment with its owner. Whatever it sends, Prorio **recomputes the score itself** and never ranks
-on the agent's estimate. The agent should use the backend band and `handoff`, distinguish unauthorised from disputed
-charges, and send the documented protection reports and care cues.
+```
+Customer app ── POST /clario/session/chat|call ──▶ backend ── create chat / web call ──▶ Retell (Clario)
+   (customer ID set by the backend as a dynamic variable: Clario already knows who it is talking to)
+Retell (Clario) ── signed POST /retell/tools/{lookup_customer|update_card|submit_card|correct_card} ──▶ backend
+   lookup_customer: the signed-in customer's own data (masked, no balances)
+   update_card:     the card takes shape as an intake draft (officers watch it in Live intake; never ranked)
+   submit_card:     after the customer confirms the read-back; Prorio ranks it and replies band, handoff, caller_message
+   correct_card:    the customer adds to or corrects a filed card (glass-box card)
+```
 
+- **Who is calling comes from Retell, not the model.** Each tool request carries the call/chat object; the backend
+  reads `customer_id` from its dynamic variables and ignores any customer the model names. One conversation can only
+  ever touch one customer.
+- **Every tool request is verified** with Retell's `X-Retell-Signature` (HMAC of the body with the Retell API key,
+  five-minute window). Unsigned, wrongly signed or altered requests get `401`.
+- **Drafts and revisions are tracked by the backend** per conversation, so the model never handles revision numbers.
+  Drafts only accept conversation cues (`CUSTOMER_REPORTS_PRESSURE`, `VULNERABILITY_CUES`, `ESSENTIALS_AT_RISK`) and
+  the customer's own transactions; account signals are still worked out by Prorio.
+- **Handoff:** Clario says the returned `caller_message`. Only `WARM_TRANSFER_FRAUD` (P1) transfers the call, to the
+  fraud team line `+61 7 5550 4800`. That number, and the customers' mobiles in `customers.json`, come from ACMA's
+  ranges reserved for fiction, so they look real on video but can never ring a real person.
+- Problems Clario can act on (an unknown issue type, someone else's transaction) come back as
+  `{"ok": false, "error": "..."}` rather than an HTTP error, so it can recover in the conversation.
+
+### Running it live
+
+1. Start the backend with the Retell settings (never commit them):
+
+   ```bash
+   export RETELL_API_KEY=...            # Retell dashboard → Settings → API keys
+   export RETELL_VOICE_AGENT_ID=agent_... RETELL_CHAT_AGENT_ID=agent_...
+   uvicorn main:app --host 127.0.0.1 --port 8000
+   ```
+
+2. Retell must reach the tool endpoints, so open a tunnel: `ngrok http 8000`. Add the tunnel's hostname to
+   `NRY_ALLOWED_HOSTS` (for example `localhost,127.0.0.1,abc123.ngrok-free.app`). Requests through the tunnel are
+   **never treated as local**: only the signed Retell tools and secret-protected intake work through it; the dashboard
+   and customer app stay on `localhost` unless staff authentication is configured.
+3. In both Retell agents, point the four custom functions at `https://<tunnel>/retell/tools/<name>`: method **POST**,
+   **Payload: args only off** (the backend needs the call object), **Wait for completion** on.
+4. Open `http://localhost:8000/customer`, choose the signed-in customer, then **Get help**. Keep `/officer` open in
+   another window to watch the card form and rank.
+
+The browser call uses the Retell web client, bundled into `web/static/retell-web.js` (ISC licence) so the page keeps
+its self-only script policy. Only `/customer` may use the microphone and connect to Retell's media servers.
+
+### Final-card webhook (alternative)
+
+An agent can instead send only the finished card to `/webhook/retell`.
 If it is used, it sends the card by calling a **custom function** at the end of the conversation:
 
 1. Make the backend reachable from the internet (Retell can't call `localhost`), for example `ngrok http 8000`. The
@@ -818,6 +863,10 @@ card is updated and its reference returned (gate G6).
 | POST | `/case/{id}/release` | Assigned officer returns active work to the shared queue with an optional note |
 | GET | `/case/{id}/context` | Masked records belonging to this case's customer, reported/verified protection and evidence-clock history |
 | POST | `/demo/seed` | Add synthetic examples once, preserving existing work; local demo mode only |
+| POST | `/clario/session/chat`, `/clario/session/call` | Customer app: start a live Retell chat or browser call for the signed-in customer (local only) |
+| POST | `/clario/session/chat/{chat_id}` | Customer app: send a chat message to Clario; returns Clario's replies and the card reference once filed |
+| GET | `/clario/session/{conversation_id}` | Customer app: the card reference and draft for a live conversation |
+| POST | `/retell/tools/{name}` | Clario's Retell custom functions (`lookup_customer`, `update_card`, `submit_card`, `correct_card`); Retell-signed |
 | GET | `/clario/{customer_id}/lookup` | Clario's read-only look-up for the signed-in customer: first name, masked accounts, card delivery, payees, recent transactions. No balances |
 | GET | `/demo`, `/officer`, `/customer` | Recording demo, redesigned officer workspace and retained customer app |
 | POST | `/admin/reset` | Rehearsal reset: clears cases, drafts, mock account changes, suggestions and approved versions; inherits staff authentication/local-only access |
@@ -864,6 +913,8 @@ All optional environment variables. (The `NRY_` prefix is left over from the ear
 | `NRY_STAFF_PASSWORD` | unset | Backend / dashboard | Enables HTTP Basic staff authentication for the dashboard, staff APIs, docs and administration. Use a strong secret and HTTPS for remote access; never commit it |
 | `NRY_STAFF_USER` | `officer` | Backend / dashboard | Staff username for the single-account password option; used in authenticated audit records |
 | `NRY_STAFF_ACCOUNTS` | unset | Backend / dashboard | Secure JSON mapping of usernames to distinct passwords for prototype staff accounts. Takes precedence over the single account; invalid configuration fails closed. Never commit values |
+| `RETELL_API_KEY` | unset | Backend | Starts live Clario sessions and verifies Retell's signed tool requests. Without it, live Clario returns `503`. Never commit it |
+| `RETELL_VOICE_AGENT_ID`, `RETELL_CHAT_AGENT_ID` | unset | Backend | The Clario voice and chat agents in Retell |
 | `NRY_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1],testserver` | Backend | Comma-separated hostnames accepted by the server. Add the actual hostname when placing the application behind an HTTPS proxy; avoid wildcards |
 
 Without configured staff accounts or a staff password, staff access is restricted to loopback clients. Secret-authenticated intake can still be
@@ -889,6 +940,7 @@ Run from the `backend` folder with its environment switched on.
 | `python test_db.py` | Restarts the backend for real and checks nothing was lost, including approved protocol versions |
 | `python test_workspace.py` | Website assets, local-only demo access, staff authentication, protected intake, audit identity, origin/host checks and additive sample loading |
 | `python test_insights.py` | Empty and populated analytics, payment deduplication, customer ownership, clocks, stages, response-watch boundaries and context access control |
+| `python test_clario_live.py` | Live Clario: Retell signatures, customer fixed by the conversation, live draft → ranked card, corrections, chat/call session start, and that tunnelled requests are never treated as local |
 | `python test_collaboration.py` | Concurrent claims and decisions, transfers, stale revisions, authenticated identity, draft validation, retry safety and restart recovery |
 
 The API/workspace tests use an in-memory database; persistence checks use a temporary file. They never touch `nry.db`.
@@ -930,6 +982,7 @@ Team-Astars/
 │   │   ├── learning.py   officers teach, leads approve
 │   │   └── selftest.py   python -m prorio.selftest
 │   ├── store.py          keeps cases, runs Prorio, officer decisions, re-ranks and the status tracker
+│   ├── clario_live.py    live Clario: Retell chat/call sessions and Clario's signed tools
 │   ├── intake_drafts.py  durable unranked drafts, confirmation and retry recovery
 │   ├── workspace_events.py  single-worker event invalidations for live staff updates
 │   ├── workspace_insights.py  aggregate graphics and scoped customer context
@@ -966,7 +1019,7 @@ Team-Astars/
 | The queue order, bands, gates and waiting-time rule | SafeBlock, card locks, disputes, callbacks and messages: they only *record* that they happened |
 | Officer decisions, re-ranking and the audit log | Payment recall and scam reports: always **drafts**; money is never moved |
 | Claims, releases, completion updates and stale-decision checks | Local officer switching: a labelled per-tab simulation, not authentication |
-| Draft persistence, confirmation and live card updates | Text dialogue, translated lines and the customer read-back interaction are scripted |
+| Draft persistence, confirmation and live card updates | Scripted scenes: their dialogue and translations (live Clario is a real Retell conversation) |
 | Saving cases, drafts and protocol versions to a database | All the banking data: it's invented |
 
 The scripted experience labels AI interaction and offers a path to a person. Prorio uses structured fields and

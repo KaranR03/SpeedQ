@@ -810,6 +810,7 @@ function renderDetail() {
       { class: "metadata-grid" },
       ...[
         ["Customer", c.customer_id],
+        ["Mobile on file", c.customer_mobile || "Not recorded"],
         ["Language", c.language_label || "English"],
         ["Status", c.card_status.label],
       ].map(([k, v]) => el("div", {}, el("dt", {}, k), el("dd", {}, v))),

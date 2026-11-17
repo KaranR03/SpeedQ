@@ -1,6 +1,6 @@
 [
   {
-    "customer_id": "CUST-001", "name": "Maria Russo", "short_name": "Maria R.", "language": "en", "language_label": "English",
+    "customer_id": "CUST-001", "mobile": "0491 570 156", "name": "Maria Russo", "short_name": "Maria R.", "language": "en", "language_label": "English",
     "accounts": [
       {"id": "ACC-3302", "type": "Everyday", "mask": "...3302", "balance": 1210.40},
       {"id": "ACC-3310", "type": "Savings", "mask": "...3310", "balance": 6950.00}
@@ -13,25 +13,25 @@
     ]
   },
   {
-    "customer_id": "CUST-002", "name": "Sam Taylor", "short_name": "Sam T.", "language": "en", "language_label": "English",
+    "customer_id": "CUST-002", "mobile": "0491 570 157", "name": "Sam Taylor", "short_name": "Sam T.", "language": "en", "language_label": "English",
     "accounts": [{"id": "ACC-7731", "type": "Everyday", "mask": "...7731", "balance": 2431.56}],
     "safeblock": false, "lockouts": [], "open_cases": [],
     "payees": [{"name": "Gold Coast Rentals", "added_at": "2025-01-20T00:00:00Z"}]
   },
   {
-    "customer_id": "CUST-003", "name": "Priya Sharma", "short_name": "Priya S.", "language": "en", "language_label": "English",
+    "customer_id": "CUST-003", "mobile": "0491 570 158", "name": "Priya Sharma", "short_name": "Priya S.", "language": "en", "language_label": "English",
     "accounts": [{"id": "ACC-5560", "type": "Credit card", "mask": "...5560", "balance": -842.30}],
     "safeblock": false, "lockouts": [], "open_cases": [],
     "payees": []
   },
   {
-    "customer_id": "CUST-004", "name": "Minh Nguyen", "short_name": "Minh N.", "language": "vi", "language_label": "Vietnamese",
+    "customer_id": "CUST-004", "mobile": "0491 570 159", "name": "Minh Nguyen", "short_name": "Minh N.", "language": "vi", "language_label": "Vietnamese",
     "accounts": [{"id": "ACC-6120", "type": "Everyday", "mask": "...6120", "balance": 980.75}],
     "safeblock": false, "lockouts": [], "open_cases": [],
     "payees": [{"name": "T. Pham", "added_at": "2026-02-03T00:00:00Z"}, {"name": "Origin Energy", "added_at": "2025-09-14T00:00:00Z"}]
   },
   {
-    "customer_id": "CUST-005", "name": "Alex", "short_name": "Alex", "language": "en", "language_label": "English",
+    "customer_id": "CUST-005", "mobile": "0491 570 313", "name": "Alex", "short_name": "Alex", "language": "en", "language_label": "English",
     "accounts": [
       {"id": "ACC-7731-A", "type": "Westpac Choice everyday", "mask": "...7731", "balance": 2431.56},
       {"id": "ACC-9045", "type": "eSaver savings", "mask": "...9045", "balance": 10250.00}
@@ -40,7 +40,7 @@
     "payees": []
   },
   {
-    "customer_id": "CUST-006", "name": "Jordan Lee", "short_name": "Jordan L.", "language": "en", "language_label": "English",
+    "customer_id": "CUST-006", "mobile": "0491 570 737", "name": "Jordan Lee", "short_name": "Jordan L.", "language": "en", "language_label": "English",
     "accounts": [{"id": "ACC-4410", "type": "Everyday", "mask": "...4410", "balance": 312.85}],
     "safeblock": false, "open_cases": [],
     "lockouts": [{"at": "2026-11-15T07:30:00Z", "reason": "Signed out after a password change; can't sign back in"}],
