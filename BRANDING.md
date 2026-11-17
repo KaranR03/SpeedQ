@@ -1,12 +1,13 @@
 # Westpac SpeedQ branding
 
-**Merged and verified:** [PR #14](https://github.com/bharath-blazecode/Team-Astars/pull/14) merged commit `d057af0`
-into `main` at `60adbde`. Its ancestry in the later `main` at `37091a8` was checked on 17 Nov 2026 (Brisbane),
-including the teammate's merged live Clario integration. This revision retains that integration.
+**Merged and verified:** [PR #14](https://github.com/bharath-blazecode/Team-Astars/pull/14) delivered the SpeedQ
+branding; [PR #18](https://github.com/bharath-blazecode/Team-Astars/pull/18) delivered the pale sidebar and control
+refinements. Both are ancestors of remote `main` at `a184be1`, reviewed on 17 Nov 2026 (Brisbane). The live Clario
+integration and its `.env` setup (#13 and #19) are also merged. Logo provenance and permission are separate below.
 
 The team renamed Beacon Assist to **Westpac SpeedQ** and chose to retain the original dashboard partitions, sidebar
-and case workflow. The later horizontal-navigation concept was not selected. This update changes the name, mark and
-colour system across the current dashboard, API reference and retained demo pages.
+and case workflow. The current name, mark and colour system are applied across the dashboard, API reference and
+retained demo pages.
 
 ## Palette and interaction
 
@@ -52,10 +53,27 @@ with copyright metadata supplied by
 The published paths, proportions, `#DA1710` fill and “Copyright © 2025 by Westpac Banking Corporation. All rights
 reserved.” notice are retained. A local white surround keeps the red mark readable within the light rose sidebar.
 
-The published package metadata declares MIT for the UI package; that does not establish permission to represent
-Westpac or confer rights to its trademarks. The mark is included at the team's explicit request for this independent
-hackathon demonstration. The dashboard continues to identify Team Astars and states that it is not an official
-Westpac service. Competition brand-use and content guidance still apply.
+The [published package metadata](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/package.json) lists MIT for the UI
+package; the source paths, fill and copyright metadata were rechecked on 17 Nov 2026. A package licence does not by
+itself establish permission to use a trademark or imply endorsement. The mark is included at the team's request for
+this independent hackathon demonstration, with Team Astars and the non-official-service disclosure retained.
+
+## Logo use in the dashboard and presentation
+
+**Permission status: not verified in this repository.** No competition brand-use rule or written Westpac permission
+covering the dashboard and recorded slide presentation has been supplied here. The existence of a published logo
+component and the hackathon context alone do not record that permission.
+
+Use the mark within the scope of applicable competition rules or permission from Westpac/the authorised organiser.
+Check that the permission covers both the prototype and its recorded/public submission. Record the rule or permission
+reference before marking this item complete. Keep the supplied mark's proportions, colours and copyright metadata,
+identify Team Astars clearly and avoid claims of bank approval. If permission is unavailable, a Team Astars mark or
+generic icon is an available alternative; this documentation update does not change the current dashboard asset.
+
+This review could not retrieve Westpac's current website terms because the cloud network blocks that host. It
+therefore confirms the asset's provenance, not legal clearance. See the
+[website terms link in the source notes](backend/data/PROTOCOLS_SOURCES.md#the-copyright-position-read-before-adding-anything)
+and the actual competition materials for the applicable conditions.
 
 ## Scope of source review
 
@@ -65,6 +83,5 @@ It is served from the existing same-origin asset allowlist under the current bro
 
 Direct access to the Westpac live website is blocked by the current cloud network policy, and no authenticated
 Westpac app was available. References are the team's supplied website screenshots and the published GEL component
-and its actual mark colour; this is not a
-claim to have reviewed a current private bank app or internal officer dashboard. No additional dashboard packages,
-external fonts or runtime dependencies were introduced.
+and its actual mark colour. This review does not cover a private bank app or internal officer dashboard. The visual
+refinement and this documentation update introduce no dashboard packages, external fonts or runtime dependencies.

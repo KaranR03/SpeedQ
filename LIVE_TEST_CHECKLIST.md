@@ -1,8 +1,12 @@
 # Live Clario test: end-to-end checklist
 
 Goal: a real Retell call (or chat) as a demo customer, and watch the card form and rank on the officer screen.
-Full background is in the README section "Live Clario (Retell voice and chat)". Tick each box as you go.
-Never commit keys: type the `export` lines in your own terminal only.
+Full background is in the [README live guide](README.md#live-clario-retell-voice-and-chat). Tick boxes only after
+checking the actual demo setup. The backend loads `backend/.env` at startup (merged in PR #19); shell variables
+already set take precedence. Keep real keys in that ignored file or your private environment, never in Git or slides.
+
+The submission is a [narrated presentation-slide video](docs/video/SHOT_LIST.md). This live checklist is for validating
+the service and rehearsing the optional on-site demonstration; it does not mark the slide deck or export complete.
 
 ## A. Have ready (5 min)
 
@@ -16,23 +20,26 @@ Never commit keys: type the `export` lines in your own terminal only.
 ## B. Start everything (10 min)
 
 1. [ ] **Tunnel** (terminal 1): `ngrok http 8000`. Copy the hostname, e.g. `abc123.ngrok-free.app`
-2. [ ] **Backend** (terminal 2):
+2. [ ] **Private settings:** copy `backend/.env.example` to `backend/.env` if that file does not already exist.
+   Fill in `RETELL_API_KEY`, verify `RETELL_VOICE_AGENT_ID` and `RETELL_CHAT_AGENT_ID`, and set `NRY_ALLOWED_HOSTS` to
+   include the actual tunnel hostname (for example `localhost,127.0.0.1,[::1],abc123.ngrok-free.app`). Use simple
+   `KEY=value` lines. For a disposable rehearsal, choose a separate `NRY_DB`, such as `/tmp/speedq-rehearsal.db`.
+3. [ ] **Backend** (terminal 2):
    ```bash
-   cd backend && source .venv/bin/activate
-   export RETELL_API_KEY=...
-   export RETELL_VOICE_AGENT_ID=agent_...  RETELL_CHAT_AGENT_ID=agent_...
-   export NRY_ALLOWED_HOSTS="localhost,127.0.0.1,[::1],abc123.ngrok-free.app"
+   cd backend
+   source .venv/bin/activate
    uvicorn main:app --host 127.0.0.1 --port 8000
    ```
-   Keep this window visible: every Retell tool call prints here.
-3. [ ] **Retell, both agents**: each of the four functions points to `https://abc123.ngrok-free.app/retell/tools/<name>`
+   Restart after changing settings. Keep this window visible for tool-call errors; do not record credentials.
+4. [ ] **Retell, both agents**: each of the four functions points to `https://abc123.ngrok-free.app/retell/tools/<name>`
    - [ ] Method **POST**
    - [ ] **Payload: args only: OFF** (the backend needs the call object to know who is calling)
    - [ ] **Wait for completion: ON**
    - [ ] If the tunnel was restarted, the hostname changed: update `NRY_ALLOWED_HOSTS` **and** all functions
-4. [ ] Open the **customer app**: `http://localhost:8000/customer` (use `localhost`, not the tunnel address)
-5. [ ] Open the **officer screen** in a second window: `http://localhost:8000/officer`
-6. [ ] Click **Reset demo** first so you start clean (or load the sample cases)
+5. [ ] Open the **customer app**: `http://localhost:8000/customer` (use `localhost`, not the tunnel address)
+6. [ ] Open the **officer screen** in a second window: `http://localhost:8000/officer`
+7. [ ] Confirm the backend is using the disposable rehearsal database before **Reset demo** on `/demo`.
+   Reset clears saved work in that database. **Load sample cases** adds cases without resetting existing work.
 
 ## C. Run the test (10 min)
 
@@ -64,7 +71,7 @@ reserved for fiction.
 
 | Symptom | Likely cause and fix |
 |---|---|
-| `503` starting a call or chat | A `RETELL_*` setting is missing in the terminal that started the backend. Restart with all three |
+| `503` starting a call or chat | Check the three `RETELL_*` settings in the private `backend/.env` or environment, including shell overrides, then restart |
 | `400` on `/retell/tools/...` | Tunnel hostname not in `NRY_ALLOWED_HOSTS`. Fix it and restart the backend |
 | `401` on a tool call | Wrong `RETELL_API_KEY`, or the request was altered |
 | Clario can't find the customer | **Payload: args only** is ON. Turn it off |
@@ -75,5 +82,5 @@ reserved for fiction.
 ## F. Fallback and before going on stage
 
 - [ ] **Fallback if the internet or Retell fails:** `http://localhost:8000/demo` runs the scripted scenes on the same backend
-- [ ] Press **Reset demo**, run one scene end to end, check the officer name, close other tabs
-- [ ] Have the recorded video ready as a last resort
+- [ ] In the disposable rehearsal database, reset only if needed, run one scene end to end, check the officer name and close other tabs
+- [ ] Have the exported presentation-slide video and PDF deck available; check that both open on the presentation device
