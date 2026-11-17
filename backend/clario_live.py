@@ -83,7 +83,20 @@ def start_call(body: SessionStart):
     dyn = _dynamic_vars(body.customer_id)
     call = _client().call.create_web_call(agent_id=_agent("VOICE"), retell_llm_dynamic_variables=dyn)
     _remember(call.call_id, body.customer_id)
-    return {"conversation_id": call.call_id, "access_token": call.access_token}
+    # Retell v3: the browser must connect with the transport and ICE servers it chose for this call.
+    return {"conversation_id": call.call_id, "access_token": call.access_token, "transport": call.transport,
+            "ice_servers": [s.model_dump(exclude_none=True) if hasattr(s, "model_dump") else s
+                            for s in call.ice_servers or []]}
+
+
+@router.get("/clario/session/call/{call_id}/transcript")
+def call_transcript(call_id: str):
+    """Server-created v3 calls don't stream the transcript to the browser; Retell saves it when the call ends."""
+    if call_id not in SESSIONS:
+        raise HTTPException(404, "unknown call")
+    call = _client().call.retrieve(call_id)
+    lines = [{"role": t.role, "content": t.content} for t in call.transcript_object or [] if t.content]
+    return {"status": call.call_status, "transcript": lines}
 
 
 @router.post("/clario/session/chat")

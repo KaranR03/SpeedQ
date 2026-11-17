@@ -372,15 +372,22 @@ async function liveCall() {
     L.conv = r.conversation_id;
     const call = new RetellWebClient();
     L.call = call;
-    call.on("call_started", () => { status.textContent = "Connected · Clario is listening"; });
-    call.on("update", (u) => {
-      lines.replaceChildren(...(u.transcript || []).map((m) =>
-        h("div", { class: `msgb ${m.role === "agent" ? "c" : "u"}`, text: m.content })));
+    call.on("call_started", () => { status.textContent = "Connected · talk to Clario. The transcript appears here when the call ends."; });
+    // Server-created v3 calls don't stream the transcript to the browser, and Retell saves it when the call ends.
+    const showTranscript = async () => {
+      const t = await api(`/clario/session/call/${encodeURIComponent(L.conv)}/transcript`).catch(() => null);
+      if (!t || L.conv !== r.conversation_id) return;
+      lines.replaceChildren(...t.transcript.map((m) => h("div", { class: `msgb ${m.role === "agent" ? "c" : "u"}`, text: m.content })));
       scroll();
+    };
+    call.on("call_ended", () => {
+      status.textContent = "Call ended"; L.call = null; $("#quick").replaceChildren();
+      setTimeout(showTranscript, 2000); setTimeout(showTranscript, 6000);  // Retell saves it shortly after
     });
-    call.on("call_ended", () => { status.textContent = "Call ended"; L.call = null; $("#quick").replaceChildren(); });
     call.on("error", (err) => { status.textContent = `Call problem: ${err?.message || err}`; L.call = null; });
-    await call.startCall({ accessToken: r.access_token });
+    // Retell v3 (v2 is retired): connect with the call's own transport and ICE servers, as the backend returned them.
+    await call.startCall({ accessToken: r.access_token, callId: r.conversation_id, transport: r.transport,
+      iceServers: r.ice_servers?.length ? r.ice_servers : undefined });
     followCase();
     $("#quick").replaceChildren(h("button", { class: "help-opt end", onclick: () => call.stopCall() }, "End call"));
   } catch (e) { status.textContent = `Can't start the call: ${e.message}`; L.call = null; }
