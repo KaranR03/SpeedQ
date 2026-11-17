@@ -10,7 +10,7 @@ const AxeBuilder = require("@axe-core/playwright").default;
 const root = path.resolve(__dirname, "../.."),
   port = Number(process.env.BEACON_COLLAB_PORT || 8026),
   base = `http://127.0.0.1:${port}`;
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), "beacon-collaboration-"));
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), "speedq-collaboration-"));
 const output = path.join(root, "frontend/test-results");
 let server,
   browser,

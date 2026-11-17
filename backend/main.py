@@ -44,7 +44,7 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 @app.get("/assets/{filename}", include_in_schema=False)
 def frontend_asset(filename: str):
     # Do not expose tests, package manifests, reports or node_modules as web assets.
-    if filename not in {"app.js", "visuals.js", "intake.js", "collaboration.css", "insights.css", "styles.css", "beacon.svg", "westpac-mark.svg", "docs.js"}:
+    if filename not in {"app.js", "visuals.js", "intake.js", "collaboration.css", "insights.css", "styles.css", "westpac-mark.svg", "docs.js"}:
         raise HTTPException(404, "asset not found")
     return FileResponse(FRONTEND / filename)
 
