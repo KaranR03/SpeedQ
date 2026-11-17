@@ -14,7 +14,7 @@ unverified external statistics.
 **Demo boundaries:** all customer data is synthetic; login and banking actions are simulated. The default
 walkthrough uses `/demo`: Sam's P4 response requires officer approval. If the team instead captures a fully answered
 live Clario Tier 1 question, Sam can remain outside the queue; use narration matching that captured flow. Check
-[logo permission](../../BRANDING.md#logo-use-in-the-dashboard-and-presentation) and the
+[current headset mark](../../BRANDING.md#logo-use-in-the-dashboard-and-presentation) and the
 [recording checklist](SHOT_LIST.md) before submission.
 
 **Speakers:** the split below is a suggestion so all five of you appear. Swap freely.

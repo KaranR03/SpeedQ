@@ -3,7 +3,8 @@
 **Team Astars · Westpac Innovation & Coding Competition (Hackathon) 2026**
 
 The team selected the original dashboard layout and partitions, with a restrained
-Westpac-red and neutral palette and the requested Westpac mark. The alternative dashboard concept was not adopted.
+red and neutral palette and an original customer-service headset symbol with one microphone. The alternative
+dashboard concept was not adopted.
 This remains an independent hackathon prototype; see [branding and asset provenance](BRANDING.md).
 
 The current visual refinement uses a **light rose sidebar with dark labels**, red outlined secondary buttons and
@@ -34,11 +35,12 @@ approval, so proposals improve over time.
 
 **Current delivery status — reviewed 17 Nov 2026 (Brisbane):** the officer **dashboard** and core case workflow are
 implemented and merged into `main`, including graphical insights, shared officer ownership and live intake.
-Remote `main` was verified at `b6061d7`: the **Westpac SpeedQ branding** (#14), **light sidebar and controls**
+Remote `main` was verified at `3007368`: the **Westpac SpeedQ branding** (#14), **light sidebar and controls**
 ([#18](https://github.com/bharath-blazecode/Team-Astars/pull/18)), **live Clario integration** (#13) and
 **automatic `.env` loading** ([#19](https://github.com/bharath-blazecode/Team-Astars/pull/19)) are merged.
-The original dashboard layout is retained. Logo provenance is recorded; competition permission is not established
-by the code package's licence. See [logo use](BRANDING.md#logo-use-in-the-dashboard-and-presentation).
+The officer-first demo is also merged via [#21](https://github.com/bharath-blazecode/Team-Astars/pull/21).
+This revision removes the former bank-logo asset and uses an original headset symbol in the sidebar and favicons.
+The project name and independent-prototype disclosure remain; see [current branding](BRANDING.md).
 **Further feature brainstorming, UI appearance refinements and officer usability testing remain open.** The project
 is a working prototype, not a finished banking service. See [build status](#build-status-what-this-repo-runs-today)
 and [remaining work](#remaining-work-and-next-iterations) for the implemented, planned and unverified areas.
@@ -527,7 +529,7 @@ before ranking a scam case. Timings are demonstration targets; simulated protect
 
 ## Build status: what this repo runs today
 
-Reviewed against remote `main` at [`b6061d7`](https://github.com/bharath-blazecode/Team-Astars/commit/b6061d7c4201665f4dc6ef9d2cb668e9c36b8ed2),
+Reviewed against remote `main` at [`3007368`](https://github.com/bharath-blazecode/Team-Astars/commit/300736880f073da971c969478e52706fae08899d),
 17 Nov 2026 (Brisbane). **Implemented** below means present in this hackathon prototype, not production-ready or
 connected to real banking systems.
 
@@ -536,7 +538,7 @@ connected to real banking systems.
 | **Prorio**, `backend/prorio/` | Implemented | Deterministic 0–100 scoring, bands, gates G1 and G3–G7, ownership-checked account evidence, cross-case payee checks, protocol proposals and an execution trace. G2's protective interaction is simulated in the customer demo |
 | Backend case workflow | Implemented | Final-card intake, priority queue, decisions, manual outcomes, re-ranking, audit trail, customer status and corrections |
 | **Officer dashboard**, `frontend/` | Core implemented; iteration open | Search/filter, concise preview, focused review, evidence/context/activity, completed work, protocol library and learning loop. Further appearance work and new feature ideas are still planned |
-| **Westpac SpeedQ branding** | Merged in PR #14; light navigation/controls in PR #18 | Original dashboard partitions and local GEL mark retained; pale rose navigation, dark labels, red outlined secondary buttons and aligned panel gutters refine the accepted layout |
+| **Westpac SpeedQ branding** | Name/palette merged in #14; navigation/controls in #18; headset in this revision | Original customer-service headset replaces the bank logo in the sidebar and favicons. Pale rose navigation, dark labels, red outlined controls and accepted dashboard partitions remain |
 | **Care insights** and case context | Implemented | Graphical urgency/issue/stage/age/decision views, response watch, evidence coverage, score components, masked customer records and an explicit copyable handoff brief |
 | **Multi-officer collaboration** | Implemented | Exclusive claim/release, handoff notes, Mine filter, named completion, live updates and revision checks against stale decisions; limited to one backend worker |
 | **Live intake** | Implemented for scripted scenes and signed Retell tools | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Clario (Retell voice and chat) streams the forming card through signed tools |
@@ -563,14 +565,15 @@ Prorio ([#7](https://github.com/bharath-blazecode/Team-Astars/pull/7)), dashboar
 
 The status documentation (#11), insights test correction (#12), live Clario integration (#13), SpeedQ branding
 (#14), live-test checklist (#15), rename cleanup (#17), light sidebar/control refinement (#18) and `.env` startup
-configuration (#19) and presentation-slide documentation (#20) are all ancestors of the verified `main` at `b6061d7`.
+configuration (#19), presentation-slide documentation (#20) and the officer-first demo (#21) are all ancestors of the verified `main` at `3007368`.
 
 The older [documentation PR #16](https://github.com/bharath-blazecode/Team-Astars/pull/16) is superseded: its five-file
 patch was carried into #18 as commit `bd4c4f4`, then updated further. Close it as superseded if it is still open;
 its older conflicts do not require another merge to deliver that content.
 
-The presentation-slide plan, current build guide and logo-use notes are merged in #20. This revision makes the
-demo officer-first and moves its optional customer conversation into a preview accessed from Live intake. The [live Clario checklist](LIVE_TEST_CHECKLIST.md) still needs
+The presentation-slide plan and build guide are merged in #20; #21 moves the optional customer conversation into
+Live intake and gives the demo its full officer width. This revision replaces the bank logo with an original headset
+symbol and updates the capture/branding guidance. The [live Clario checklist](LIVE_TEST_CHECKLIST.md) still needs
 completion on the configured demo machine; automated Clario checks use a faked Retell client. Git history verifies
 merged code, not unpushed work, live Retell settings, a finished slide deck or submission readiness.
 
@@ -613,7 +616,7 @@ they do not require replacing the working dashboard.
 | **Live Clario rehearsal and language behaviour** | Integration merged; live verification pending | Complete [LIVE_TEST_CHECKLIST.md](LIVE_TEST_CHECKLIST.md): verify issue types, backend bands/`handoff`, unauthorised-vs-disputed charge handling, protection reports, `ESSENTIALS_AT_RISK`, language behaviour and confirmed-card → officer → customer outcome |
 | **Voice transfer and remote demo setup** | Live verification pending | The documented transfer destination is fictional. A real transfer needs an authorised destination and a successful test. Verify HTTPS, the tunnel hostname and signed tools; configure the intake secret separately if using the final-card webhook |
 | **Presentation-slide video and final rehearsal** | Format selected; deck/export pending | Follow the [slide plan](docs/video/SHOT_LIST.md), capture prototype screenshots, finish narration and export the slide presentation. Rehearse P1/P4, corrections, multilingual and two-officer handoff; confirm submission rules and keep a PDF/video fallback |
-| **Branding and content permission** | Provenance recorded; permission unverified | Check competition rules or obtain permission covering the dashboard logo and slide video; see [BRANDING.md](BRANDING.md). Review the [content source notes](backend/data/PROTOCOLS_SOURCES.md), including the external Retell knowledge base |
+| **Presentation branding and content** | Original headset selected; refreshed captures pending | Use the current headset symbol in the deck and refresh screenshots containing the former bank mark; see [BRANDING.md](BRANDING.md). Review separate [content source notes](backend/data/PROTOCOLS_SOURCES.md), including the external Retell knowledge base |
 | **Production identity and permissions** | Beyond prototype | Replace Basic accounts with SSO/MFA, customer identity, session controls and separate officer/protocol-owner permissions |
 | **Production shared state and operations** | Beyond prototype | Coordinate claims transactionally across workers, share event transport, and validate backup/restore, monitoring and load behavior |
 | **Surge mode and real banking actions** | Optional future scope | Define and validate each separately. Incident protocols do not provide incident grouping/proactive notifications, and mock banking actions do not execute real transactions. Live Retell chat is already implemented; its behaviour still needs the rehearsal above |
@@ -699,7 +702,8 @@ is a working plan; verify the actual competition limit and deadline.
 4. A learning-loop capture can use `NRY_SUGGEST_THRESHOLD=1` in the rehearsal environment, followed by a restart. Show
    a human approving a suggestion; do not describe this as automatic model retraining.
 5. Record narration over the slide deck, add captions/transcript, export and watch the complete video on another
-   device. Keep a PDF deck backup. Confirm any Westpac logo use against [BRANDING.md](BRANDING.md).
+   device. Keep a PDF deck backup. Use the original headset symbol and updated screenshots from this revision;
+   see [BRANDING.md](BRANDING.md).
 
 `/demo` remains available for gathering screenshots and for the on-site scripted fallback. Its dialogue and supplied
 translations are scripted; backend lookups, drafts, ranking and officer decisions operate on the prototype. SafeBlock
@@ -1088,8 +1092,8 @@ and behavior need separate validation; they are not established by the local dem
   review, external Retell verification and optional integrations are tracked in
   [Remaining work](#remaining-work-and-next-iterations). Implemented core flows do not mean the dashboard is final.
 - **Live service and submission readiness need verification.** The external Retell setup and fictional transfer
-  destination do not establish a working real phone handoff. The slide deck/export and competition logo permission
-  also need team confirmation; use the linked checklists before marking them complete.
+  destination do not establish a working real phone handoff. The slide deck/export and refreshed headset
+  screenshots also need team confirmation; use the linked checklists before marking them complete.
 
 ---
 

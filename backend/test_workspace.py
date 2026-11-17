@@ -31,6 +31,8 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(page.headers["cache-control"], "no-store")
         self.assertEqual(self.client.get("/assets/app.js").status_code, 200)
         self.assertEqual(self.client.get("/assets/styles.css").status_code, 200)
+        self.assertEqual(self.client.get("/assets/support-headset.svg").status_code, 200)
+        self.assertEqual(self.client.get("/assets/westpac-mark.svg").status_code, 404)
         self.assertEqual(self.client.get("/assets/package.json").status_code, 404)
         self.assertEqual(self.client.get("/assets/node_modules/playwright/package.json").status_code, 404)
         self.assertEqual(self.client.get("/", headers={"host": "attacker.invalid"}).status_code, 400)

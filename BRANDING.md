@@ -1,87 +1,54 @@
 # Westpac SpeedQ branding
 
-**Merged and verified:** [PR #14](https://github.com/bharath-blazecode/Team-Astars/pull/14) delivered the SpeedQ
-branding; [PR #18](https://github.com/bharath-blazecode/Team-Astars/pull/18) delivered the pale sidebar and control
-refinements. Both are ancestors of remote `main` at `a184be1`, reviewed on 17 Nov 2026 (Brisbane). The live Clario
-integration and its `.env` setup (#13 and #19) are also merged. Logo provenance and permission are separate below.
+**Current mark:** an original customer-service headset with **one boom microphone**, drawn as a small monochrome
+SVG for Team Astars. The Westpac bank logo is removed from the current source and replaced in the sidebar and
+favicons. The project name, pale rose navigation and accepted dashboard partitions are retained.
 
-The team renamed Beacon Assist to **Westpac SpeedQ** and chose to retain the original dashboard partitions, sidebar
-and case workflow. The current name, mark and colour system are applied across the dashboard, API reference and
-retained demo pages.
+**Source reviewed:** remote `main` at `3007368` on 17 Nov 2026 (Brisbane). The earlier naming/palette work (#14),
+light sidebar/controls (#18), slide documentation (#20) and officer-first demo (#21) are merged. This revision
+replaces the former bank mark at the team's request; historical commits retain their original snapshots.
 
 ## Palette and interaction
 
 | Role | Colour | Use |
 |---|---|---|
-| Brand/action | `#DA1710` | Primary buttons, current selections, active chart accents |
-| Action hover | `#B5120C` | Hover and high-emphasis red text |
-| Navigation | `#FCEDEA` | Pale rose sidebar, retaining the selected layout |
-| Navigation selection | `#F6DAD5` | Current sidebar item, with a red inset marker |
-| Navigation text | `#493735` / `#705D59` | Dark labels and supporting copy on the light sidebar |
-| Panel | `#FFFFFF` | Existing work panels |
+| Primary/action | `#DA1710` | Primary buttons, selections and active chart accents |
+| Headset / action hover | `#B5120C` | Headset strokes, microphone tip and hover/high-emphasis text |
+| Navigation | `#FCEDEA` | Pale rose sidebar |
+| Navigation selection | `#F6DAD5` | Current item with a red inset marker |
+| Navigation text | `#493735` / `#705D59` | Dark labels and supporting text |
+| Panel | `#FFFFFF` | Work panels and the headset badge |
 | Canvas | `#F7F7F6` | Quiet off-white background |
-| Primary text | `#1F2029` | High-contrast headings and case information |
-| Secondary text | `#535353` / `#636363` | Labels and supporting detail |
+| Primary text | `#1F2029` | Headings and case information |
+| Secondary text | `#535353` / `#636363` | Supporting labels and detail |
 
-Colours are centrally defined in `frontend/styles.css` and used by insights and live intake. Functional priority,
-warning and verified-state colours remain distinct and text-labelled. Primary buttons have red hover/pressed states;
-secondary buttons use the red outline seen in the supplied reference screenshots. Keyboard focus is a dark red on
-both the light sidebar and work surfaces. Layout and decision semantics are retained.
+Colours remain defined in `frontend/styles.css`. Priority, warning and verified-state colours retain text labels.
+Secondary actions use a red outline; keyboard focus is dark red on light surfaces. The team-supplied website
+screenshots informed spacing, heading hierarchy and directional cues, without importing their photographs or fonts.
 
-## Refinements from the team's reference images
+## Headset symbol and source
 
-This revision uses the Westpac help and corporate website screenshots supplied by the team. Their useful patterns
-are white/soft-grey surfaces, clear heading weight, consistent card gutters, red outlined secondary actions and red
-directional cues. These are adapted to the existing officer dashboard, without adding a marketing hero, decorative
-photography, oversized display headings or website footer columns to the work area.
+[`frontend/support-headset.svg`](frontend/support-headset.svg) is source-drawn geometry: one headband, two earpieces
+and one microphone boom ending in a small capsule. It uses a single red, rounded strokes and no face or decorative
+shading. The 32 × 32 view box stays sharp in a 30px sidebar icon and at favicon sizes. A 42px white badge separates it
+from the pale rose sidebar.
 
-The former deep-red sidebar is replaced by pale rose with dark text, a richer rose active row and a red inset
-selection marker. The demo toolbar follows the same light treatment. Queue and preview gutters align at 24px on
-wide screens; existing compact/mobile overrides remain. Table headings and section labels are easier to scan, and
-the existing case-opening chevron uses the action red. The four customer detail fields use a balanced two-column
-grid, including the mobile field added by the Clario integration. The supplied screenshots themselves are not committed or
-embedded as product assets; no additional images, fonts, packages or runtime requests are introduced.
+A standard headphone emoji lacks a boom microphone and varies by platform. The SVG gives the requested support
+headset the same restrained appearance across devices. It was written for this prototype without downloaded stock
+emoji artwork, a third-party icon package or the former bank-logo paths. No extra dependency or font is needed.
 
-## Westpac mark provenance
-
-`frontend/westpac-mark.svg` contains the three static paths from the published `WBCLogo` component in
-[`@westpac/ui` version 1.21.0](https://www.npmjs.com/package/@westpac/ui/v/1.21.0), distributed by Westpac GEL.
-The reviewed source is
-[wbc-logo.js](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/dist/components/symbol/components/logos/wbc-logo.js),
-with copyright metadata supplied by
-[symbol.component.js](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/dist/components/symbol/symbol.component.js).
-The published paths, proportions, `#DA1710` fill and “Copyright © 2025 by Westpac Banking Corporation. All rights
-reserved.” notice are retained. A local white surround keeps the red mark readable within the light rose sidebar.
-
-The [published package metadata](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/package.json) lists MIT for the UI
-package; the source paths, fill and copyright metadata were rechecked on 17 Nov 2026. A package licence does not by
-itself establish permission to use a trademark or imply endorsement. The mark is included at the team's request for
-this independent hackathon demonstration, with Team Astars and the non-official-service disclosure retained.
+The symbol is decorative beside the named home link, so the sidebar image has empty alternative text. The SVG also
+has its own descriptive title. It contains no script, event handler, external reference or remote resource, and is
+served through the existing same-origin asset allowlist. The former bank SVG is removed from that allowlist and its
+old asset URL returns 404. A new favicon URL avoids retaining the old mark through the previous asset address.
 
 ## Logo use in the dashboard and presentation
 
-**Permission status: not verified in this repository.** No competition brand-use rule or written Westpac permission
-covering the dashboard and recorded slide presentation has been supplied here. The existence of a published logo
-component and the hackathon context alone do not record that permission.
+Use the original headset symbol and fresh prototype screenshots for the slide presentation. Replace any bank logo
+still present in the externally maintained deck before export; that external deck is not edited by this repository
+change. The [slide plan](docs/video/SHOT_LIST.md) and [narration script](docs/video/SCRIPT.md) describe the production work.
 
-Use the mark within the scope of applicable competition rules or permission from Westpac/the authorised organiser.
-Check that the permission covers both the prototype and its recorded/public submission. Record the rule or permission
-reference before marking this item complete. Keep the supplied mark's proportions, colours and copyright metadata,
-identify Team Astars clearly and avoid claims of bank approval. If permission is unavailable, a Team Astars mark or
-generic icon is an available alternative; this documentation update does not change the current dashboard asset.
-
-This review could not retrieve Westpac's current website terms because the cloud network blocks that host. It
-therefore confirms the asset's provenance, not legal clearance. See the
-[website terms link in the source notes](backend/data/PROTOCOLS_SOURCES.md#the-copyright-position-read-before-adding-anything)
-and the actual competition materials for the applicable conditions.
-
-## Scope of source review
-
-The source was read as text; its React code was not installed or executed. The saved asset contains only SVG,
-metadata and path elements, without scripts, event handlers, embedded HTML, external references or remote resources.
-It is served from the existing same-origin asset allowlist under the current browser security policy.
-
-Direct access to the Westpac live website is blocked by the current cloud network policy, and no authenticated
-Westpac app was available. References are the team's supplied website screenshots and the published GEL component
-and its actual mark colour. This review does not cover a private bank app or internal officer dashboard. The visual
-refinement and this documentation update introduce no dashboard packages, external fonts or runtime dependencies.
+The **Westpac SpeedQ** project name remains at the team's request, alongside Team Astars and the independent
+hackathon-prototype/synthetic-data disclosures. Removing the bank artwork is not a claim of official approval or a
+blanket clearance for other materials. Follow the applicable competition guidance for the project name and other
+content; the [source notes](backend/data/PROTOCOLS_SOURCES.md) record separate content-review work.

@@ -53,17 +53,14 @@ chevrons and aligned 24px queue/preview gutters. Section labels use sentence cas
 The marketing photographs, large hero headings and multi-column website footer are not imported into the officer's
 work area. Compact and mobile layouts keep their existing responsive structure.
 
-The Westpac mark was sourced from the published GEL `WBCLogo` component, kept locally as static SVG with its
-copyright metadata, and added at the team's request. [BRANDING.md](BRANDING.md) records its provenance and usage
-boundaries. This is not a reproduction of a Westpac site or private staff app. No proprietary fonts, trackers,
-remote runtime assets or UI packages are loaded. The interface retains Team Astars, synthetic-data and independent
-hackathon prototype disclosures.
+The sidebar and favicons use an original, single-colour customer-service headset with one boom microphone. The
+32px SVG view box, rounded strokes and 30px display size keep it legible without a platform-dependent emoji font.
+The former bank-logo file and its active references are removed. The 42px white badge and existing text wordmark
+remain restrained; the layout and case workflow are unchanged.
 
-Logo use in the dashboard and recorded presentation requires checking the applicable competition rules or
-permission; [BRANDING.md](BRANDING.md#logo-use-in-the-dashboard-and-presentation) records that permission is currently
-unverified. The team has selected a narrated [presentation-slide video](docs/video/SHOT_LIST.md), using original
-diagrams and prototype screenshots. Asset provenance and an independent-prototype disclosure do not establish brand
-permission or official endorsement.
+[BRANDING.md](BRANDING.md) records the source-drawn geometry and current usage. Team Astars, synthetic-data and
+independent-prototype disclosures remain. The narrated [presentation-slide video](docs/video/SHOT_LIST.md) should use
+the current headset and fresh prototype screenshots; replace older bank marks in the externally maintained deck.
 
 ## Accessibility and resilience
 

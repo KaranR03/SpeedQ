@@ -35,8 +35,8 @@ source beside every external factual claim. Read the narration aloud to set the 
    an entire dashboard into an unreadable slide. Use simple reveals to explain the handoff in order.
 3. Record your own narration in a quiet room. Add captions or provide the narration transcript. Use readable contrast
    and avoid rapid transitions or information conveyed only by colour.
-4. Include Team Astars, the synthetic-data disclosure and the independent-prototype statement. Use the Westpac logo
-   only within the scope of confirmed competition rules or permission; see [BRANDING.md](../../BRANDING.md).
+4. Include Team Astars, the synthetic-data disclosure and independent-prototype statement. Use the original support
+   headset with one microphone; replace older bank marks and screenshots in the deck. See [BRANDING.md](../../BRANDING.md).
 5. Keep researched claims separate from the example story. An illustration of a slow queue is not a measurement of
    Westpac's actual service. Use verified sources for external statistics, or leave those statistics out.
 
@@ -65,7 +65,7 @@ Use a disposable rehearsal database before using **Reset demo**; preserve existi
 
 ## Record and export
 
-- [ ] Confirm the competition's duration, deadline, file/link requirements and brand-use rules.
+- [ ] Confirm the competition's duration, deadline and file/link requirements; use the original headset mark and current screenshots.
 - [ ] Reconcile the existing 15-slide deck with [SCRIPT.md](SCRIPT.md), keeping its team speaker allocation and confirming a final reviewer.
 - [ ] Capture current screenshots, label scripted scenes and check that only synthetic data is visible.
 - [ ] Finish the slide deck and speaker notes. Check text at normal presentation size.
@@ -76,6 +76,7 @@ Use a disposable rehearsal database before using **Reset demo**; preserve existi
 
 ## Current delivery status
 
-The software is implemented on `main` through PR #19. The slide deck, narration, final export, live Retell rehearsal
-and organiser confirmation of logo use are **not marked complete** by this document. Update this checklist only when
+The software is implemented on `main` through PR #21. This revision replaces the bank mark with the original
+headset. The refreshed slide captures, narration, final export and live Retell rehearsal are **not marked complete**
+by this document. Update this checklist only when
 the team has the corresponding evidence.

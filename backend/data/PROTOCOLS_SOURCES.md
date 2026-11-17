@@ -28,8 +28,8 @@ So the database follows these rules:
    44 Westpac pages. That was an editorial overlap check, not a legal threshold or licence; it was not rerun here.
 3. **Cite sources.** Each source has a title and link so readers can check the current guidance.
 4. **No page dumps in the repo.** Don't commit crawled pages, screenshots of Westpac pages or PDFs. The team's
-   requested Westpac SpeedQ branding uses one static GEL mark with its provenance and disclosure documented in
-   [BRANDING.md](../../BRANDING.md); this does not authorise copying other site assets or content.
+   current dashboard uses an original customer-service headset with its source documented in
+   [BRANDING.md](../../BRANDING.md). The former bank logo is removed; this does not authorise copying site assets or content.
 5. **No phone numbers or email addresses** from Westpac pages; they go out of date. Point to the source page instead.
 6. **Not an endorsement.** Don't present this as Westpac-approved. It is a hackathon prototype using synthetic data.
 
@@ -44,11 +44,10 @@ Two follow-ups remain open:
 
 ## The Westpac design system (for the UI)
 
-The published [`@westpac/ui` 1.21.0 metadata](https://cdn.jsdelivr.net/npm/@westpac/ui@1.21.0/package.json) lists
-**MIT** (rechecked 17 Nov 2026). The dashboard does not install that UI package; its local static mark is documented
-in [BRANDING.md](../../BRANDING.md). Code-package licensing and permission to use the Westpac trademark are separate.
-The applicable competition rules or permission must cover the dashboard and recorded presentation; that permission
-has not been verified here. Keep the independent Team Astars attribution and avoid implying bank approval.
+Earlier palette research consulted Westpac GEL. The current dashboard does not install that UI package or bundle
+the bank logo. Its original headset symbol is documented in [BRANDING.md](../../BRANDING.md), separately from the
+public-help source material. Project naming and any other external content still follow the applicable competition
+guidance; keep the independent Team Astars attribution and avoid implying bank approval.
 
 ## How the database is meant to change ("officers teach, leads approve")
 

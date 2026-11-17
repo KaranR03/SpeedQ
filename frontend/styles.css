@@ -141,18 +141,18 @@ summary:focus-visible {
   line-height: 1.05;
 }
 .brand-mark {
-  width: 47px;
-  height: 39px;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   background: #fff;
   border: 1px solid var(--sidebar-line);
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .brand-mark img {
-  width: 35px;
-  height: auto;
+  width: 30px;
+  height: 30px;
   display: block;
 }
 .brand-copy {
