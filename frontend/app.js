@@ -1925,6 +1925,14 @@ $("demo-officer-select").addEventListener("change", () =>
   }),
 );
 $("refresh-intake").addEventListener("click", () => run(refresh));
+if (window.parent !== window) {
+  const conversationLink = $("customer-conversation");
+  conversationLink.setAttribute("aria-haspopup", "dialog");
+  conversationLink.addEventListener("click", (event) => {
+    event.preventDefault();
+    window.parent.postMessage({ type: "customer_preview" }, location.origin);
+  });
+}
 $("live-intake-shortcut").addEventListener("click", () =>
   run(() => navigate("intake")),
 );
@@ -1971,6 +1979,10 @@ window.addEventListener("message", (event) => {
     event.origin !== location.origin
   )
     return;
+  if (event.data?.type === "customer_preview_closed") {
+    $(state.view === "intake" ? "customer-conversation" : "main").focus();
+    return;
+  }
   if (event.data?.type === "intake") {
     run(() => navigate("intake"));
     return;

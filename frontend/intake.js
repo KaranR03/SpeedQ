@@ -45,7 +45,7 @@ export function createIntake({
           el(
             "p",
             {},
-            "Start a customer conversation in the side-by-side demo. The card will appear here as facts are collected, before it is confirmed or ranked.",
+            "Customer conversations appear here as facts are collected, before a card is confirmed or ranked. Use the optional customer preview when you need to inspect a conversation.",
           ),
         ),
       );

@@ -30,7 +30,8 @@ walkthrough. Further feature candidates and live rehearsal remain in the
 - Claim another case, choose **Release case**, and let the other officer take over. Manual cases retain their manual
   workflow and notes through release and re-claim.
 - Open `/demo`, start a customer scene and watch the officer pane switch to **Live intake**. Facts appear as the
-  conversation progresses. After customer confirmation, the same handoff points to its ranked case.
+  conversation progresses without a chat column. **Live intake → View customer conversation** opens the optional
+  preview; closing it keeps the scene running. After confirmation, the same handoff points to its ranked case.
 
 ## Identity and transport
 

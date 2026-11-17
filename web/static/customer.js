@@ -415,7 +415,7 @@ function init() {
   if (p.get("track")) return trackOnly(p.get("track"));
   $("#picker").replaceChildren(liveBar(), h("div", { class: "scripted" }, h("span", { class: "small muted", text: "Scripted scenes:" }),
     ...Object.entries(SCENES).map(([k, s]) => h("button", { class: "btn small", text: s.label, onclick: () => play(k) }))));
-  if (embedded) add(h("p", { class: "muted small", text: "Pick a customer in the bar above to start." }));
+  if (embedded) add(h("p", { class: "muted small", text: "No conversation is running. Close this preview and choose a scene to start." }));
   else getHelp();
   renderCard();
   window.addEventListener("message", (e) => {
