@@ -1,6 +1,6 @@
 # Protocol Database: where it comes from, and how we stay on the right side of copyright
 
-`protocols.json` is the Beacon Assist Protocol Database: 31 scenarios Prorio can use to draft proposals. This note
+`protocols.json` is the Westpac SpeedQ Protocol Database: 31 scenarios Prorio can use to draft proposals. This note
 explains how it was built and the rules for changing it.
 
 ## What it is and isn't
@@ -26,7 +26,9 @@ So the database follows these rules:
 2. **No copied text.** We checked every Westpac source page against the file: **no run of 8 or more words matches**
    any of the 44 Westpac pages (checked 16 Nov 2026). Keep it that way.
 3. **Link, don't copy.** Each source is a title and a link. Linking is fine.
-4. **No page dumps in the repo.** Don't commit crawled pages, screenshots of Westpac pages, PDFs or Westpac logos.
+4. **No page dumps in the repo.** Don't commit crawled pages, screenshots of Westpac pages or PDFs. The team's
+   requested Westpac SpeedQ branding uses one static GEL mark with its provenance and disclosure documented in
+   [BRANDING.md](../../BRANDING.md); this does not authorise copying other site assets or content.
 5. **No phone numbers or email addresses** from Westpac pages; they go out of date. Point to the source page instead.
 6. **Not an endorsement.** Don't present this as Westpac-approved. It is a hackathon prototype using synthetic data.
 

@@ -1,15 +1,19 @@
-# Beacon Assist
+# Westpac SpeedQ
 
 **Team Astars · Westpac Innovation & Coding Competition (Hackathon) 2026**
 
-> *Red answers questions. Beacon's agents work the case: they look things up, protect you, rank you fairly, and hand
+Formerly **Beacon Assist**. The team selected the original dashboard layout and partitions, with a restrained
+Westpac-red and neutral palette and the requested Westpac mark. The alternative dashboard concept was not adopted.
+This remains an independent hackathon prototype; see [branding and asset provenance](BRANDING.md).
+
+> *Red answers questions. SpeedQ's agents work the case: they look things up, protect you, rank you fairly, and hand
 > a ready-to-approve solution to a person.*
 
 When a customer needs help from their bank, they often explain the problem to a bot, then again to a person, then
 again to a specialist. Meanwhile a customer being scammed *right now* waits in the same line as someone asking when
 their card will arrive.
 
-**Beacon Assist** is an independent hackathon prototype for that workflow. The intended in-app experience uses two agents:
+**Westpac SpeedQ** is an independent hackathon prototype for that workflow. The intended in-app experience uses two agents:
 
 - **Clario** (the front door) talks to the customer by text or voice, answers what it safely can from the customer's
   own data or the Westpac knowledge base, protects scam victims first, and writes the problem up **once** as a
@@ -151,7 +155,7 @@ account, scams) are **done by officers**. The lowest-priority, simple cases (P4,
 
 ## Design principles
 
-Every rule in Beacon Assist rests on these six.
+Every rule in Westpac SpeedQ rests on these six.
 
 1. **Harm clock.** Rank a case by how fast harm grows if nobody acts, not by how loudly the customer asks or which
    menu button they pressed.
@@ -242,7 +246,7 @@ change it there and in this table.
 
 ### Bands
 
-Response targets are Beacon Assist design targets, not Westpac figures.
+Response targets are Westpac SpeedQ design targets, not Westpac figures.
 
 | Band | Score | Who handles | AI's job | Design target | Customer sees |
 |---|---|---|---|---|---|
@@ -494,7 +498,7 @@ but it does not implement incident grouping or notifications.
 
 Six made-up customers. Data lives in `backend/data/` (`customers.json`, `transactions.json`, `cards.json`).
 
-| ID | Name | Situation | Expected under Beacon Assist |
+| ID | Name | Situation | Expected under Westpac SpeedQ |
 |---|---|---|---|
 | CUST-001 | Maria Russo | Paid $4,800 to a brand-new payee after a caller claiming to be from the bank told her to move her savings | Scam path: SafeBlock offered first, **100, P1**, warm handoff to a fraud specialist |
 | CUST-002 | Sam Taylor | Asking when a replacement card will arrive (dispatched 12 Nov, due 19 Nov) | **Route A, Tier 1**: answered from his data. Only queued (**5, P4**) if he is not satisfied |
@@ -510,7 +514,7 @@ before ranking a scam case. Timings are demonstration targets; simulated protect
 
 ## Build status: what this repo runs today
 
-Reviewed against remote `main` at [`5c84495`](https://github.com/bharath-blazecode/Team-Astars/commit/5c844952338538b3558fc2d0c0e257620f863852),
+Reviewed against remote `main` at [`14e5269`](https://github.com/bharath-blazecode/Team-Astars/commit/14e5269d1640cc50967397511c5eac44204fb454),
 17 Nov 2026 (Brisbane). **Implemented** below means present in this hackathon prototype, not production-ready or
 connected to real banking systems.
 
@@ -540,6 +544,12 @@ Prorio ([#7](https://github.com/bharath-blazecode/Team-Astars/pull/7)), dashboar
 ([#9](https://github.com/bharath-blazecode/Team-Astars/pull/9)) and collaboration/live intake
 ([#10](https://github.com/bharath-blazecode/Team-Astars/pull/10)). All advertised remote branch tips were already
 contained in `main` at review time. A retained feature branch is not evidence of unfinished work.
+
+The subsequent README/status update is merged in [#11](https://github.com/bharath-blazecode/Team-Astars/pull/11).
+The teammate's fix that waits for refreshed insight totals before asserting is merged in
+[#12](https://github.com/bharath-blazecode/Team-Astars/pull/12) and is retained in this branding update. The rename and
+red palette are delivered separately from those merged features; changing the presentation does not complete the
+remaining usability, voice-integration or production work below.
 
 **Work in progress:** no additional active implementation can be confirmed from those refs. GitHub issue-board and
 PR discussion/status pages were unavailable to this review. Unpushed changes and work in Retell need teammate
@@ -612,7 +622,7 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-The **Beacon Assist officer dashboard** is served at `http://127.0.0.1:8000` by the backend itself. No frontend
+The **Westpac SpeedQ officer dashboard** is served at `http://127.0.0.1:8000` by the backend itself. No frontend
 build, Node server, external font, or third-party script is required. Click **Load sample cases** to add five synthetic
 customers without clearing existing work. The loader is idempotent and is disabled when staff authentication is enabled.
 

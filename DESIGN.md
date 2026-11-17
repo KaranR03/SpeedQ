@@ -1,4 +1,4 @@
-# Beacon Assist officer workspace
+# Westpac SpeedQ officer workspace
 
 The officer's first question is “who needs help next?” The first screen answers that with an evidence-ranked queue,
 four live counts and a short preview of one customer. The interface never invents response-time statistics or case data.
@@ -28,14 +28,23 @@ prototype still simulates every banking action. Incomplete customer-message draf
 
 ## Visual direction and branding
 
-The original interface uses burgundy, a deep wine navigation rail, warm neutral surfaces, restrained line icons,
-readable system fonts and generous spacing. Priority labels combine colour with text; urgency is not conveyed by
-colour alone. Details are progressively disclosed instead of shrinking operational text to fit everything on screen.
+The team retained the original sidebar, panel partitions, queue/preview and focused case review. The alternative
+horizontal-navigation concept was not selected. The project is now **Westpac SpeedQ**.
 
-This takes inspiration from the professionalism of banking websites. It does not reproduce Westpac's logo, exact
-page composition, proprietary typography, images, copy or website source. The Beacon mark and interface assets in
-`frontend/` are original to this project. No external fonts, trackers or UI scripts are loaded by the application.
-The interface identifies Team Astars and states that it is an independent hackathon prototype using synthetic data.
+The colour system uses Westpac's published `#DA1710` red for primary actions, `#54100E` deep red for the sidebar,
+white panels, off-white `#F7F7F6` canvas and neutral charcoal/grey text. Purple decorative surfaces and secondary text
+have been replaced across the queue, insights and live intake. Customer avatars are neutral; priority and verification
+colours still convey meaning alongside text. Existing spacing, typography and information partitions are retained.
+
+The requested minimalist direction is interpreted as restrained accents, consistent controls, neutral work surfaces
+and clear hierarchy. It is a visual preference, not a gendered design rule. Buttons have distinct hover, pressed and
+keyboard-focus states; the sidebar uses a contrasting white focus outline.
+
+The Westpac mark was sourced from the published GEL `WBCLogo` component, kept locally as static SVG with its
+copyright metadata, and added at the team's request. [BRANDING.md](BRANDING.md) records its provenance and usage
+boundaries. This is not a reproduction of a Westpac site or private staff app. No proprietary fonts, trackers,
+remote runtime assets or UI packages are loaded. The interface retains Team Astars, synthetic-data and independent
+hackathon prototype disclosures.
 
 These choices reduce copying and affiliation risks; they do not constitute legal clearance. Follow the competition's
 brand-use rules and obtain permission before representing the prototype as an official bank service.

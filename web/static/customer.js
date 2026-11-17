@@ -1,4 +1,4 @@
-// Customer app: Clario's side of Beacon Assist, on a phone-sized page.
+// Customer app: Clario's side of Westpac SpeedQ, on a phone-sized page.
 // The customer's lines are scripted so the video is repeatable. Everything else is real: Clario's look-ups read the
 // customer's own data from the backend, the card goes through the same /webhook/retell the voice agent uses, Prorio
 // ranks it, and "My card" polls the customer's real status. ?track=WGM-0412 shows only the live card (for Retell calls).

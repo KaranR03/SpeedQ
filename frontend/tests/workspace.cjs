@@ -615,7 +615,17 @@ async function review(page, name) {
   await page.locator("#band-filter").selectOption("all");
 
   // A failed refresh preserves existing data and makes staleness visible.
-  await page.route("**/workspace/cases", (route) => route.abort("failed"));
+  let restoring = false;
+  let resumeRecovery;
+  const recoveryGate = new Promise((resolve) => {
+    resumeRecovery = resolve;
+  });
+  const offlineRoute = async (route) => {
+    if (!restoring) return route.abort("failed");
+    await recoveryGate;
+    return route.continue();
+  };
+  await page.route("**/workspace/cases", offlineRoute);
   await page
     .getByRole("button", { name: "Refresh cases", exact: true })
     .click();
@@ -624,8 +634,12 @@ async function review(page, name) {
     await page.locator("#next-case").isDisabled(),
     "No next-case handoff while offline",
   );
-  await page.unroute("**/workspace/cases");
+  // Hold successful background reads until the retry click. SSE/polling can otherwise
+  // restore the connection and hide the button between unroute() and click().
+  restoring = true;
   await page.getByRole("button", { name: "Try again", exact: true }).click();
+  resumeRecovery();
+  await page.unroute("**/workspace/cases", offlineRoute);
   await page.locator("#connection-error").waitFor({ state: "hidden" });
 
   for (const width of [390, 768, 1024, 1440]) {
