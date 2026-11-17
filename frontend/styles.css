@@ -5,10 +5,14 @@
   --brand-soft: #fff1f0;
   --brand-tint: #fffaf9;
   --brand-border: #e4bab5;
-  --sidebar: #54100e;
-  --sidebar-active: #85231b;
-  --sidebar-muted: #d7c4c0;
-  --ink: #252525;
+  --sidebar: #fcedea;
+  --sidebar-hover: #f9e3df;
+  --sidebar-active: #f6dad5;
+  --sidebar-ink: #493735;
+  --sidebar-muted: #705d59;
+  --sidebar-line: #e5c8c3;
+  --sidebar-accent: #9f261d;
+  --ink: #1f2029;
   --text-secondary: #535353;
   --muted: #636363;
   --line: #e5e3e1;
@@ -117,7 +121,8 @@ summary:focus-visible {
   inset: 0 auto 0 0;
   width: 224px;
   background: var(--sidebar);
-  color: #fff6f4;
+  color: var(--sidebar-ink);
+  border-right: 1px solid var(--sidebar-line);
   padding: 33px 19px 22px;
   display: flex;
   flex-direction: column;
@@ -127,7 +132,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 11px;
-  color: white;
+  color: var(--ink);
   text-decoration: none;
   padding: 0 12px;
   font-weight: 700;
@@ -142,6 +147,7 @@ summary:focus-visible {
   place-items: center;
   flex-shrink: 0;
   background: #fff;
+  border: 1px solid var(--sidebar-line);
   border-radius: 6px;
 }
 .brand-mark img {
@@ -158,7 +164,7 @@ summary:focus-visible {
   font-size: 11px;
   letter-spacing: 0.3px;
   font-weight: 500;
-  color: #f1deda;
+  color: var(--sidebar-muted);
 }
 .brand-project {
   display: block;
@@ -166,14 +172,14 @@ summary:focus-visible {
   letter-spacing: -0.6px;
 }
 .sidebar :focus-visible {
-  outline-color: #fff;
+  outline-color: var(--brand-hover);
 }
 .workspace-label {
-  font-size: 10px;
-  letter-spacing: 1.7px;
+  font-size: 11px;
+  letter-spacing: 0.2px;
   color: var(--sidebar-muted);
   margin: 49px 15px 17px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .nav-item {
   border: 0;
@@ -185,22 +191,24 @@ summary:focus-visible {
   text-align: left;
   padding: 13px 14px;
   border-radius: 8px;
-  color: #e9d8d4;
+  color: var(--sidebar-ink);
   font-size: 13px;
   margin: 4px 0;
   min-height: 47px;
   transition: background 0.16s;
 }
 .nav-item:hover {
-  background: #ffffff0c;
-  color: #fff;
+  background: var(--sidebar-hover);
+  color: var(--sidebar-accent);
 }
 .nav-item.active {
   background: var(--sidebar-active);
-  color: white;
+  color: var(--sidebar-accent);
+  box-shadow: inset 3px 0 var(--brand);
+  font-weight: 600;
 }
 .nav-item.active .icon {
-  color: #fff4f2;
+  color: var(--sidebar-accent);
 }
 .nav-item .icon {
   width: 18px;
@@ -212,33 +220,34 @@ summary:focus-visible {
   min-width: 21px;
   text-align: center;
   padding: 1px 5px;
-  background: #ffffff16;
+  background: #fff;
   border-radius: 5px;
-  color: white;
+  color: var(--sidebar-ink);
 }
 .nav-divider {
-  border-top: 1px solid #ffffff13;
+  border-top: 1px solid var(--sidebar-line);
   margin: 23px 13px 20px;
 }
 .tiny-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #fff1e9;
+  background: var(--brand);
   margin-left: auto;
 }
 .sidebar-bottom {
   margin-top: auto;
 }
 .human-first {
-  border: 1px solid #ffffff18;
+  border: 1px solid var(--sidebar-line);
+  background: #ffffff80;
   border-radius: 10px;
   padding: 18px 15px 14px;
   position: relative;
   margin: 30px 6px 26px;
 }
 .human-first > .icon {
-  color: #ebd6cf;
+  color: var(--sidebar-accent);
   width: 22px;
   height: 22px;
   margin-bottom: 9px;
@@ -255,7 +264,7 @@ summary:focus-visible {
   margin: 7px 0 0;
 }
 .team-credit {
-  border-top: 1px solid #ffffff14;
+  border-top: 1px solid var(--sidebar-line);
   padding: 21px 8px 0;
   display: flex;
   gap: 10px;
@@ -264,7 +273,7 @@ summary:focus-visible {
 .team-credit strong {
   font-size: 11px;
   display: block;
-  color: #f7eeec;
+  color: var(--sidebar-ink);
 }
 .team-credit div > span {
   display: block;
@@ -275,13 +284,13 @@ summary:focus-visible {
 .team-mark {
   height: 31px;
   width: 31px;
-  border: 1px solid #ffffff27;
+  border: 1px solid var(--sidebar-line);
   border-radius: 9px;
   display: grid;
   place-items: center;
   font-weight: 700;
   position: relative;
-  color: #f7eeec;
+  color: var(--sidebar-accent);
   font-size: 18px;
 }
 .team-mark > span {
@@ -442,17 +451,17 @@ h3 {
 }
 .button {
   border: 1px solid transparent;
-  border-radius: 7px;
-  padding: 11px 15px;
+  border-radius: 4px;
+  padding: 11px 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   text-decoration: none;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
   font-weight: 600;
-  min-height: 40px;
+  min-height: 42px;
   transition:
     background 0.16s,
     box-shadow 0.16s;
@@ -471,13 +480,19 @@ h3 {
   border-color: #8f100b;
 }
 .button.secondary {
-  border-color: var(--control-border);
+  border-color: var(--brand);
   background: #fff;
   color: var(--ink);
 }
 .button.secondary:hover:not(:disabled) {
-  background: var(--surface);
-  border-color: var(--brand-border);
+  background: var(--brand-soft);
+  border-color: var(--brand-hover);
+  color: var(--brand-hover);
+}
+.button.secondary:active:not(:disabled) {
+  background: var(--sidebar-active);
+  border-color: var(--brand-hover);
+  color: var(--brand-hover);
 }
 .button .icon {
   width: 15px;
@@ -573,7 +588,7 @@ h3 {
 .queue-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 294px;
-  gap: 21px;
+  gap: 24px;
   align-items: start;
 }
 .queue-card,
@@ -584,7 +599,7 @@ h3 {
   overflow: hidden;
 }
 .queue-card-header {
-  padding: 22px 23px 17px;
+  padding: 24px 24px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -613,7 +628,7 @@ h3 {
   letter-spacing: 0;
 }
 .queue-tools {
-  padding: 0 23px 18px;
+  padding: 0 24px 16px;
   display: flex;
   gap: 9px;
   align-items: center;
@@ -673,7 +688,7 @@ input::placeholder {
 .filter-tabs {
   display: flex;
   gap: 22px;
-  padding: 0 23px;
+  padding: 0 24px;
   border-bottom: 1px solid var(--line);
   min-height: 39px;
 }
@@ -712,7 +727,7 @@ input::placeholder {
   text-align: left;
 }
 .case-table th {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--muted);
   background: var(--surface);
@@ -720,7 +735,7 @@ input::placeholder {
   white-space: nowrap;
 }
 .case-table th:first-child {
-  padding-left: 23px;
+  padding-left: 24px;
 }
 .case-table td {
   padding: 18px 10px;
@@ -729,7 +744,7 @@ input::placeholder {
   vertical-align: middle;
 }
 .case-table td:first-child {
-  padding-left: 22px;
+  padding-left: 24px;
 }
 .case-table td:last-child {
   padding-right: 17px;
@@ -797,10 +812,10 @@ input::placeholder {
   width: 100%;
   cursor: pointer;
 }
-.row-chevron {
-  width: 13px;
-  height: 13px;
-  color: var(--muted);
+.case-table td:last-child > .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--brand-hover);
 }
 .badge {
   display: inline-flex;
@@ -865,7 +880,7 @@ input::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 23px;
+  padding: 12px 24px;
   color: var(--muted);
   font-size: 9px;
   background: #fff;
@@ -894,7 +909,7 @@ input::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 17px 20px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--line);
   font-size: 10px;
   font-weight: 600;
@@ -905,7 +920,7 @@ input::placeholder {
   color: var(--muted);
 }
 .overview-content {
-  padding: 22px 20px;
+  padding: 24px;
 }
 .customer-heading {
   display: flex;
@@ -957,11 +972,11 @@ input::placeholder {
   color: var(--muted);
 }
 .section-kicker {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--muted);
-  text-transform: uppercase;
+  text-transform: none;
   margin-bottom: 9px;
 }
 .reason-highlight {
@@ -998,7 +1013,7 @@ input::placeholder {
 }
 .review-footer {
   border-top: 1px solid var(--line);
-  padding: 16px 20px;
+  padding: 16px 24px;
   background: var(--surface);
 }
 .review-footer > p {
@@ -1008,8 +1023,8 @@ input::placeholder {
   color: var(--muted);
 }
 .review-footer .button {
-  min-height: 40px;
-  font-size: 10px;
+  min-height: 42px;
+  font-size: 11px;
 }
 .overview-placeholder {
   padding: 45px 24px;
@@ -1158,7 +1173,7 @@ input::placeholder {
 }
 .metadata-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 15px;
   border-top: 1px solid var(--line);
   padding-top: 17px;
@@ -1839,8 +1854,8 @@ dialog::backdrop {
     padding: 12px 10px;
   }
   .workspace-label {
-    font-size: 8px;
-    letter-spacing: 1.2px;
+    font-size: 10px;
+    letter-spacing: 0.2px;
   }
   .topbar-right {
     gap: 13px;

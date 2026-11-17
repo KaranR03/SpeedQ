@@ -4,7 +4,8 @@ The officer's first question is “who needs help next?” The first screen answ
 four live counts and a short preview of one customer. The interface never invents response-time statistics or case data.
 
 **Current state:** the core dashboard, visual insights and shared ownership/live intake are implemented on `main`.
-The Westpac SpeedQ red branding is merged through PR #14, verified at `60adbde` on 17 Nov 2026 (Brisbane).
+The Westpac SpeedQ red branding is merged through PR #14, and live Clario through PR #13; both were verified in
+`main` at `37091a8` on 17 Nov 2026 (Brisbane).
 The appearance and feature set remain open to further iteration;
 see the [remaining work in README](README.md#remaining-work-and-next-iterations). This document describes current
 behavior rather than declaring the design final.
@@ -32,14 +33,19 @@ prototype still simulates every banking action. Incomplete customer-message draf
 The team retained the original sidebar, panel partitions, queue/preview and focused case review. The alternative
 horizontal-navigation concept was not selected. The project is now **Westpac SpeedQ**.
 
-The colour system uses Westpac's published `#DA1710` red for primary actions, `#54100E` deep red for the sidebar,
-white panels, off-white `#F7F7F6` canvas and neutral charcoal/grey text. Purple decorative surfaces and secondary text
-have been replaced across the queue, insights and live intake. Customer avatars are neutral; priority and verification
-colours still convey meaning alongside text. Existing spacing, typography and information partitions are retained.
+The colour system uses Westpac's published `#DA1710` red for primary actions, `#FCEDEA` pale rose for the sidebar,
+white panels, off-white `#F7F7F6` canvas and dark graphite/grey text. The light sidebar uses dark labels, a rose active
+row and a red inset selection marker. Customer avatars are neutral; priority and verification colours still convey
+meaning alongside text. Existing information partitions and navigation structure are retained.
 
 The requested minimalist direction is interpreted as restrained accents, consistent controls, neutral work surfaces
 and clear hierarchy. It is a visual preference, not a gendered design rule. Buttons have distinct hover, pressed and
-keyboard-focus states; the sidebar uses a contrasting white focus outline.
+keyboard-focus states; the light sidebar uses a dark-red focus outline.
+
+The team's Westpac website screenshots inform the secondary red-outline buttons, clear heading weight, red case
+chevrons and aligned 24px queue/preview gutters. Section labels use sentence case; primary actions remain filled red.
+The marketing photographs, large hero headings and multi-column website footer are not imported into the officer's
+work area. Compact and mobile layouts keep their existing responsive structure.
 
 The Westpac mark was sourced from the published GEL `WBCLogo` component, kept locally as static SVG with its
 copyright metadata, and added at the team's request. [BRANDING.md](BRANDING.md) records its provenance and usage
