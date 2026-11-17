@@ -28,7 +28,8 @@ screenshots informed spacing, heading hierarchy and directional cues, without im
 
 ## Headset symbol and source
 
-[`frontend/support-headset.svg`](frontend/support-headset.svg) is source-drawn geometry: one headband, two earpieces
+The sidebar embeds source-drawn SVG geometry directly in `frontend/index.html`; the same drawing in
+[`frontend/support-headset.svg`](frontend/support-headset.svg) supplies the favicons. It has one headband, two earpieces
 and one microphone boom ending in a small capsule. It uses a single red, rounded strokes and no face or decorative
 shading. The 32 × 32 view box stays sharp in a 30px sidebar icon and at favicon sizes. A 42px white badge separates it
 from the pale rose sidebar.
@@ -37,8 +38,9 @@ A standard headphone emoji lacks a boom microphone and varies by platform. The S
 headset the same restrained appearance across devices. It was written for this prototype without downloaded stock
 emoji artwork, a third-party icon package or the former bank-logo paths. No extra dependency or font is needed.
 
-The symbol is decorative beside the named home link, so the sidebar image has empty alternative text. The SVG also
-has its own descriptive title. It contains no script, event handler, external reference or remote resource, and is
+The symbol is decorative beside the named home link, so its containing badge is hidden from assistive technology.
+The sidebar drawing needs no image request and stays visible if a separately served asset is missing or stale. The
+standalone favicon SVG has its own descriptive title. It contains no script, event handler, external reference or remote resource, and is
 served through the existing same-origin asset allowlist. The former bank SVG is removed from that allowlist and its
 old asset URL returns 404. A new favicon URL avoids retaining the old mark through the previous asset address.
 

@@ -150,7 +150,7 @@ summary:focus-visible {
   border: 1px solid var(--sidebar-line);
   border-radius: 8px;
 }
-.brand-mark img {
+.brand-mark svg {
   width: 30px;
   height: 30px;
   display: block;
