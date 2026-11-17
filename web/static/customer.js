@@ -292,8 +292,9 @@ async function play(id) {
 // The backend starts the Retell chat or web call for the signed-in customer, so Clario already knows who it is
 // talking to. Clario's look-ups and the card go through the backend's signed Retell tools; this page only shows the
 // conversation and follows the card once Clario files it.
-const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo"], ["CUST-002", "Sam Taylor"], ["CUST-003", "Priya Sharma"],
-  ["CUST-004", "Minh Nguyen"], ["CUST-005", "Alex"], ["CUST-006", "Jordan Lee"]];
+const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo", "Scam in progress"], ["CUST-002", "Sam Taylor", "Replacement card on its way"],
+  ["CUST-003", "Priya Sharma", "Unrecognised $89 charge"], ["CUST-004", "Minh Nguyen", "Missing rent payment · Tiếng Việt"],
+  ["CUST-005", "Alex", "Replacement card on its way"], ["CUST-006", "Jordan Lee", "Locked out of online banking"]];
 const L = { cid: "CUST-002", mode: null, conv: null, call: null, poll: null };
 
 function liveReset() {
@@ -340,7 +341,6 @@ async function liveText() {
     L.conv = r.conversation_id;
     typing.remove();
     r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
-    if (!r.messages.length) add(h("div", { class: "msgb c", text: "Hi, I'm Clario, Westpac's AI assistant. What can I help with?" }));
   } catch (e) { typing.remove(); return add(h("div", { class: "banner err", text: `Can't reach Clario: ${e.message}` })); }
   const input = h("input", { class: "composer-in", placeholder: "Message Clario", "aria-label": "Message Clario", maxlength: "2000" });
   const send = async (text) => {
@@ -393,16 +393,36 @@ async function liveCall() {
   } catch (e) { status.textContent = `Can't start the call: ${e.message}`; L.call = null; }
 }
 
-function liveBar() {
-  const sel = h("select", { "aria-label": "Signed-in demo customer", onchange: (e) => { L.cid = e.target.value; getHelp(); } },
-    LIVE_CUSTOMERS.map(([id, n]) => h("option", { value: id, selected: id === L.cid, text: `${n} (${id})` })));
-  return h("div", { class: "livebar" }, h("span", { class: "small", text: "Live · signed in as" }), sel,
-    h("button", { class: "btn small primary", text: "Get help", onclick: getHelp }));
+const initials = (n) => n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+function renderCustomers() {
+  $("#dpCustomers").replaceChildren(...LIVE_CUSTOMERS.map(([id, name, hint]) =>
+    h("button", { class: `dp-cust${id === L.cid ? " on" : ""}`, "aria-pressed": id === L.cid ? "true" : "false",
+      onclick: () => { L.cid = id; renderCustomers(); getHelp(); } },
+    h("span", { class: "dp-av", text: initials(name), "aria-hidden": "true" }),
+    h("span", { class: "dp-who" }, h("b", { text: name }), h("span", { text: `${id} · ${hint}` })))));
+}
+function setPanel(open) {
+  document.body.classList.toggle("dp-hidden", !open);
+  try { localStorage.setItem("beacon.demoPanel", open ? "open" : "hidden"); } catch { /* storage unavailable */ }
+}
+function demoPanel() {
+  renderCustomers();
+  $("#dpScenes").replaceChildren(...Object.entries(SCENES).map(([k, sc]) =>
+    h("button", { class: "dp-scene", onclick: () => play(k) }, h("span", { text: sc.label }), h("span", { class: "dp-play", text: "▶", "aria-hidden": "true" }))));
+  $("#dpClose").addEventListener("click", () => setPanel(false));
+  $("#dpTab").addEventListener("click", () => setPanel(true));
+  let saved = "open";
+  try { saved = localStorage.getItem("beacon.demoPanel") || "open"; } catch { /* storage unavailable */ }
+  setPanel(saved !== "hidden");
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "d" || e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    setPanel(document.body.classList.contains("dp-hidden"));
+  });
 }
 
 function trackOnly(ref) {
   S.ref = ref;
-  $("#picker").remove();
+  $("#picker").remove(); $("#dpTab").remove();
   document.querySelector(".ph-tabs").remove();
   $("#chat").remove(); $("#quick").remove();
   $("#sim").textContent = "Live case from Clario (voice). Updates every 2 s.";
@@ -420,8 +440,7 @@ function init() {
     if (!S.running && !L.mode) play("jordan");
   });
   if (p.get("track")) return trackOnly(p.get("track"));
-  $("#picker").replaceChildren(liveBar(), h("div", { class: "scripted" }, h("span", { class: "small muted", text: "Scripted scenes:" }),
-    ...Object.entries(SCENES).map(([k, s]) => h("button", { class: "btn small", text: s.label, onclick: () => play(k) }))));
+  demoPanel();
   if (embedded) add(h("p", { class: "muted small", text: "Pick a customer in the bar above to start." }));
   else getHelp();
   renderCard();

@@ -100,8 +100,13 @@ assert c.get("/clario/session/call/call_1/transcript").json() == {
     "status": "ongoing", "transcript": [{"role": "agent", "content": "Hi Sam, I'm Clario."}]}
 assert c.get("/clario/session/call/nope/transcript").status_code == 404
 assert seen["call"]["agent_id"] == "agent_voice" and seen["call"]["retell_llm_dynamic_variables"]["customer_id"] == "CUST-002"
+ctx = json.loads(seen["call"]["retell_llm_dynamic_variables"]["customer_context"])
+assert ctx["customer_id"] == "CUST-002" and ctx["card_delivery"]["expected"].startswith("2026-11-19"), ctx
+assert all(set(v) <= {"type", "mask"} for v in ctx["accounts"])   # masked, no balances
 r = c.post("/clario/session/chat", json={"customer_id": "CUST-002"}).json()
 assert r == {"conversation_id": "chat_1", "messages": ["Hi Sam, I'm Clario."]} and seen["chat"]["agent_id"] == "agent_chat"
+FakeRetell.chat.create = lambda **kw: SimpleNamespace(chat_id="chat_2", message_with_tool_calls=[])   # agent waits for the customer
+assert c.post("/clario/session/chat", json={"customer_id": "CUST-002"}).json()["messages"] == ["It's due 19 Nov."]
 r = c.post("/clario/session/chat/chat_1", json={"content": "When is my card arriving?"}).json()
 assert r["messages"] == ["It's due 19 Nov."] and r["case_reference"] is None
 assert c.post("/clario/session/chat/unknown", json={"content": "hi"}).status_code == 404

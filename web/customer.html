@@ -8,7 +8,18 @@
   <script type="module" src="/static/customer.js"></script>
 </head>
 <body class="cust">
-  <div class="picker" id="picker"></div>
+  <aside class="picker demo-panel" id="picker" aria-label="Demo controls">
+    <div class="dp-head">
+      <div><div class="dp-title">Demo controls</div><div class="dp-sub">Synthetic customers · not shown in the app</div></div>
+      <button class="dp-close" id="dpClose" aria-label="Hide demo controls" title="Hide (D)">‹</button>
+    </div>
+    <div class="dp-sec">Signed in as</div>
+    <div class="dp-list" id="dpCustomers"></div>
+    <div class="dp-sec">Scripted scenes <span class="dp-tag">fallback</span></div>
+    <div class="dp-scenes" id="dpScenes"></div>
+    <div class="dp-foot">Press <kbd>D</kbd> to hide or show this panel.</div>
+  </aside>
+  <button class="dp-tab" id="dpTab" aria-label="Show demo controls" title="Show demo controls (D)">Demo</button>
   <div class="phone">
     <div class="ph-top">
       <div class="row1"><b>Help</b><span class="ai" title="You are talking to an AI">AI</span>

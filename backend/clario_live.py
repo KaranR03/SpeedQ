@@ -55,8 +55,13 @@ def _dynamic_vars(customer_id):
     cust = md.get_customer(customer_id)
     if not cust:
         raise HTTPException(404, "unknown customer")
+    from main import clario_lookup
+    # The signed-in customer's own records (the same masked, no-balance view as lookup_customer), handed over at the
+    # start so Clario can answer "where's my card?" straight away, even before its tools can reach this backend.
+    context = json.dumps(clario_lookup(customer_id), separators=(",", ":"), default=str)
     return {"customer_id": customer_id, "first_name": cust["name"].split()[0],
-            "preferred_language": cust.get("language_label") or cust.get("language", "en")}
+            "preferred_language": cust.get("language_label") or cust.get("language", "en"),
+            "customer_context": context}
 
 
 def _remember(conv_id, customer_id):
@@ -102,9 +107,13 @@ def call_transcript(call_id: str):
 @router.post("/clario/session/chat")
 def start_chat(body: SessionStart):
     dyn = _dynamic_vars(body.customer_id)
-    chat = _client().chat.create(agent_id=_agent("CHAT"), retell_llm_dynamic_variables=dyn)
+    client = _client()
+    chat = client.chat.create(agent_id=_agent("CHAT"), retell_llm_dynamic_variables=dyn)
     _remember(chat.chat_id, body.customer_id)
-    return {"conversation_id": chat.chat_id, "messages": _agent_lines(chat.message_with_tool_calls)}
+    messages = _agent_lines(chat.message_with_tool_calls)
+    if not messages:  # a Retell chat agent speaks once the customer writes: tapping "Text Clario" is that "Hi"
+        messages = _agent_lines(client.chat.create_chat_completion(chat_id=chat.chat_id, content="Hi").messages)
+    return {"conversation_id": chat.chat_id, "messages": messages}
 
 
 @router.post("/clario/session/chat/{chat_id}")
