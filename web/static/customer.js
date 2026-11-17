@@ -292,9 +292,13 @@ async function play(id) {
 // The backend starts the Retell chat or web call for the signed-in customer, so Clario already knows who it is
 // talking to. Clario's look-ups and the card go through the backend's signed Retell tools; this page only shows the
 // conversation and follows the card once Clario files it.
-const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo"], ["CUST-002", "Sam Taylor"], ["CUST-003", "Priya Sharma"],
-  ["CUST-004", "Minh Nguyen"], ["CUST-005", "Alex"], ["CUST-006", "Jordan Lee"]];
+const LIVE_CUSTOMERS = [["CUST-001", "Maria Russo", "Scam in progress"], ["CUST-002", "Sam Taylor", "Replacement card on its way"],
+  ["CUST-003", "Priya Sharma", "Unrecognised $89 charge"], ["CUST-004", "Minh Nguyen", "Missing rent payment · Tiếng Việt"],
+  ["CUST-005", "Alex", "Replacement card on its way"], ["CUST-006", "Jordan Lee", "Locked out of online banking"]];
 const L = { cid: "CUST-002", mode: null, conv: null, call: null, poll: null };
+// Clario's chat replies may use **bold**: show it as bold, built from text nodes so nothing is parsed as HTML.
+const clarioLine = (text) => h("div", { class: "msgb c" },
+  String(text).split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? h("b", { text: part }) : part)));
 
 function liveReset() {
   if (L.call) { try { L.call.stopCall(); } catch { /* already ended */ } }
@@ -339,8 +343,7 @@ async function liveText() {
     const r = await api("/clario/session/chat", { customer_id: L.cid });
     L.conv = r.conversation_id;
     typing.remove();
-    r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
-    if (!r.messages.length) add(h("div", { class: "msgb c", text: "Hi, I'm Clario, Westpac's AI assistant. What can I help with?" }));
+    r.messages.forEach((m) => add(clarioLine(m)));
   } catch (e) { typing.remove(); return add(h("div", { class: "banner err", text: `Can't reach Clario: ${e.message}` })); }
   const input = h("input", { class: "composer-in", placeholder: "Message Clario", "aria-label": "Message Clario", maxlength: "2000" });
   const send = async (text) => {
@@ -352,7 +355,7 @@ async function liveText() {
     try {
       const r = await api(`/clario/session/chat/${encodeURIComponent(L.conv)}`, { content: text });
       t.remove();
-      r.messages.forEach((m) => add(h("div", { class: "msgb c", text: m })));
+      r.messages.forEach((m) => add(clarioLine(m)));
       if (r.case_reference) filed(r.case_reference);
     } catch (e) { t.remove(); add(h("div", { class: "banner err", text: `Message not sent: ${e.message}` })); }
   };
@@ -372,30 +375,57 @@ async function liveCall() {
     L.conv = r.conversation_id;
     const call = new RetellWebClient();
     L.call = call;
-    call.on("call_started", () => { status.textContent = "Connected · Clario is listening"; });
-    call.on("update", (u) => {
-      lines.replaceChildren(...(u.transcript || []).map((m) =>
-        h("div", { class: `msgb ${m.role === "agent" ? "c" : "u"}`, text: m.content })));
+    call.on("call_started", () => { status.textContent = "Connected · talk to Clario. The transcript appears here when the call ends."; });
+    // Server-created v3 calls don't stream the transcript to the browser, and Retell saves it when the call ends.
+    const showTranscript = async () => {
+      const t = await api(`/clario/session/call/${encodeURIComponent(L.conv)}/transcript`).catch(() => null);
+      if (!t || L.conv !== r.conversation_id) return;
+      lines.replaceChildren(...t.transcript.map((m) => h("div", { class: `msgb ${m.role === "agent" ? "c" : "u"}`, text: m.content })));
       scroll();
+    };
+    call.on("call_ended", () => {
+      status.textContent = "Call ended"; L.call = null; $("#quick").replaceChildren();
+      setTimeout(showTranscript, 2000); setTimeout(showTranscript, 6000);  // Retell saves it shortly after
     });
-    call.on("call_ended", () => { status.textContent = "Call ended"; L.call = null; $("#quick").replaceChildren(); });
     call.on("error", (err) => { status.textContent = `Call problem: ${err?.message || err}`; L.call = null; });
-    await call.startCall({ accessToken: r.access_token });
+    // Retell v3 (v2 is retired): connect with the call's own transport and ICE servers, as the backend returned them.
+    await call.startCall({ accessToken: r.access_token, callId: r.conversation_id, transport: r.transport,
+      iceServers: r.ice_servers?.length ? r.ice_servers : undefined });
     followCase();
     $("#quick").replaceChildren(h("button", { class: "help-opt end", onclick: () => call.stopCall() }, "End call"));
   } catch (e) { status.textContent = `Can't start the call: ${e.message}`; L.call = null; }
 }
 
-function liveBar() {
-  const sel = h("select", { "aria-label": "Signed-in demo customer", onchange: (e) => { L.cid = e.target.value; getHelp(); } },
-    LIVE_CUSTOMERS.map(([id, n]) => h("option", { value: id, selected: id === L.cid, text: `${n} (${id})` })));
-  return h("div", { class: "livebar" }, h("span", { class: "small", text: "Live · signed in as" }), sel,
-    h("button", { class: "btn small primary", text: "Get help", onclick: getHelp }));
+const initials = (n) => n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+function renderCustomers() {
+  $("#dpCustomers").replaceChildren(...LIVE_CUSTOMERS.map(([id, name, hint]) =>
+    h("button", { class: `dp-cust${id === L.cid ? " on" : ""}`, "aria-pressed": id === L.cid ? "true" : "false",
+      onclick: () => { L.cid = id; renderCustomers(); getHelp(); } },
+    h("span", { class: "dp-av", text: initials(name), "aria-hidden": "true" }),
+    h("span", { class: "dp-who" }, h("b", { text: name }), h("span", { text: `${id} · ${hint}` })))));
+}
+function setPanel(open) {
+  document.body.classList.toggle("dp-hidden", !open);
+  try { localStorage.setItem("beacon.demoPanel", open ? "open" : "hidden"); } catch { /* storage unavailable */ }
+}
+function demoPanel() {
+  renderCustomers();
+  $("#dpScenes").replaceChildren(...Object.entries(SCENES).map(([k, sc]) =>
+    h("button", { class: "dp-scene", onclick: () => play(k) }, h("span", { text: sc.label }), h("span", { class: "dp-play", text: "▶", "aria-hidden": "true" }))));
+  $("#dpClose").addEventListener("click", () => setPanel(false));
+  $("#dpTab").addEventListener("click", () => setPanel(true));
+  let saved = "open";
+  try { saved = localStorage.getItem("beacon.demoPanel") || "open"; } catch { /* storage unavailable */ }
+  setPanel(saved !== "hidden");
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "d" || e.metaKey || e.ctrlKey || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+    setPanel(document.body.classList.contains("dp-hidden"));
+  });
 }
 
 function trackOnly(ref) {
   S.ref = ref;
-  $("#picker").remove();
+  $("#picker").remove(); $("#dpTab").remove();
   document.querySelector(".ph-tabs").remove();
   $("#chat").remove(); $("#quick").remove();
   $("#sim").textContent = "Live case from Clario (voice). Updates every 2 s.";
@@ -413,8 +443,7 @@ function init() {
     if (!S.running && !L.mode) play("jordan");
   });
   if (p.get("track")) return trackOnly(p.get("track"));
-  $("#picker").replaceChildren(liveBar(), h("div", { class: "scripted" }, h("span", { class: "small muted", text: "Scripted scenes:" }),
-    ...Object.entries(SCENES).map(([k, s]) => h("button", { class: "btn small", text: s.label, onclick: () => play(k) }))));
+  demoPanel();
   if (embedded) add(h("p", { class: "muted small", text: "No conversation is running. Close this preview and choose a scene to start." }));
   else getHelp();
   renderCard();
