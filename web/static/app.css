@@ -1,6 +1,6 @@
 /* Westpac SpeedQ: shared styles. Calm, text-first, readable on a projector. No external fonts or libraries. */
 :root {
-  --ink: #252525; --ink-2: #535353; --ink-3: #636363; --line: #e5e3e1; --line-2: #f3f2f1;
+  --ink: #1f2029; --ink-2: #535353; --ink-3: #636363; --line: #e5e3e1; --line-2: #f3f2f1;
   --bg: #f7f7f6; --panel: #ffffff; --accent: #da1710; --accent-hover: #b5120c; --accent-soft: #fff1f0;
   --p1: #b5120c; --p1-bg: #fff1f0; --p2: #b4520a; --p2-bg: #fdf0e3;
   --p3: #8a6d00; --p3-bg: #fbf4d9; --p4: #3b6e4f; --p4-bg: #e6f2ea;
@@ -241,10 +241,10 @@ body.embed .picker { display: none; }
 
 /* ---------- Side-by-side demo ---------- */
 body.demo { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-.dbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #54100e; color: #fff; flex-wrap: wrap; }
+.dbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fcedea; color: var(--ink); border-bottom: 1px solid #e5c8c3; flex-wrap: wrap; }
 .dbar b { margin-right: 6px; }
-.dbar .btn { background: transparent; color: #fff; border-color: #56607a; }
-.dbar .btn.on { background: #fff; color: var(--ink); }
+.dbar .btn { background: #fff; color: var(--ink); border-color: var(--accent); }
+.dbar .btn:hover:not(:disabled), .dbar .btn.on { background: var(--accent-soft); color: var(--accent-hover); border-color: var(--accent-hover); }
 .caption { padding: 8px 16px; background: #fff8dc; border-bottom: 1px solid #f0e2a8; font-size: 15px; min-height: 38px; }
 .stage { flex: 1; display: grid; grid-template-columns: 390px 1fr; min-height: 0; }
 .stage iframe { width: 100%; height: 100%; border: 0; }
