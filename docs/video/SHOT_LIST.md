@@ -46,7 +46,8 @@ Follow [BUILD.md](../../BUILD.md) for the current setup and [the README recordin
 Use a disposable rehearsal database before using **Reset demo**; preserve existing team cases.
 
 - Officer workspace: `/officer` (or `/`). Use **Load sample cases** for an additive synthetic queue.
-- Customer and scripted side-by-side scenes: `/customer` and `/demo`. Capture only the states needed for the slides.
+- `/demo` shows the full-width officer workspace. Capture customer screens separately at `/customer`, or open
+  **Live intake → View customer conversation** for the optional preview. Capture only the states needed for the slides.
 - Show draft → confirmation → ranking → officer review → outcome in order. Capture the reasons shown by the backend.
 - For collaboration, use two local demo officer tabs and show an actual claim or named completion.
 - For a learning-loop screenshot, a disposable demo can use `NRY_SUGGEST_THRESHOLD=1`. Restart after changing settings.

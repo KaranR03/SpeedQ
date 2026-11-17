@@ -3,9 +3,10 @@
 This is the current runbook for the implemented dashboard and the presentation-slide submission video. It replaces
 the original backend/Streamlit build brief. The [README](README.md) is the detailed product, API and roadmap reference.
 
-**Source reviewed:** remote `main` at `a184be1` on 17 Nov 2026 (Brisbane). PR #18 merged the pale rose navigation and
-updated documentation; PR #19 merged automatic `backend/.env` loading. This documentation revision adds the selected
-[slide-video plan](docs/video/SHOT_LIST.md). A merged software feature is separate from a completed live rehearsal or
+**Source reviewed:** remote `main` at `b6061d7` on 17 Nov 2026 (Brisbane). PR #18 merged the pale rose navigation,
+PR #19 merged automatic `backend/.env` loading and PR #20 merged the selected
+[slide-video plan](docs/video/SHOT_LIST.md). This revision makes `/demo` officer-first with an optional conversation
+preview accessed from Live intake. A merged software feature is separate from a completed live rehearsal or
 finished video export.
 
 ## What is built
@@ -42,11 +43,12 @@ Open:
 |---|---|
 | `http://localhost:8000/` or `/officer` | Current officer dashboard |
 | `http://localhost:8000/customer` | Customer app and live Clario entry points |
-| `http://localhost:8000/demo` | Scripted side-by-side customer/officer demonstration |
+| `http://localhost:8000/demo` | Full-width officer demo; optional customer preview from Live intake |
 | `http://localhost:8000/docs` | Self-hosted API reference, under the staff access rules |
 
 No frontend build or Node server is required. **Load sample cases** adds cases without clearing the queue. The
-scripted demo needs no external AI key. Keep one backend worker: ownership and event coordination are process-local.
+scripted demo needs no external AI key. Customer conversation controls stay in their own app or the optional
+Live intake preview, not in the left column. Keep one backend worker: ownership and event coordination are process-local.
 The default unauthenticated demonstration accepts loopback clients only; remote staff access requires the configured
 staff accounts, HTTPS and an allowed hostname. See [settings](README.md#settings) for the actual controls and limits.
 

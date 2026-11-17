@@ -34,7 +34,7 @@ approval, so proposals improve over time.
 
 **Current delivery status — reviewed 17 Nov 2026 (Brisbane):** the officer **dashboard** and core case workflow are
 implemented and merged into `main`, including graphical insights, shared officer ownership and live intake.
-Remote `main` was verified at `a184be1`: the **Westpac SpeedQ branding** (#14), **light sidebar and controls**
+Remote `main` was verified at `b6061d7`: the **Westpac SpeedQ branding** (#14), **light sidebar and controls**
 ([#18](https://github.com/bharath-blazecode/Team-Astars/pull/18)), **live Clario integration** (#13) and
 **automatic `.env` loading** ([#19](https://github.com/bharath-blazecode/Team-Astars/pull/19)) are merged.
 The original dashboard layout is retained. Logo provenance is recorded; competition permission is not established
@@ -527,7 +527,7 @@ before ranking a scam case. Timings are demonstration targets; simulated protect
 
 ## Build status: what this repo runs today
 
-Reviewed against remote `main` at [`a184be1`](https://github.com/bharath-blazecode/Team-Astars/commit/a184be127178258233f2e41545309024dad53637),
+Reviewed against remote `main` at [`b6061d7`](https://github.com/bharath-blazecode/Team-Astars/commit/b6061d7c4201665f4dc6ef9d2cb668e9c36b8ed2),
 17 Nov 2026 (Brisbane). **Implemented** below means present in this hackathon prototype, not production-ready or
 connected to real banking systems.
 
@@ -540,11 +540,11 @@ connected to real banking systems.
 | **Care insights** and case context | Implemented | Graphical urgency/issue/stage/age/decision views, response watch, evidence coverage, score components, masked customer records and an explicit copyable handoff brief |
 | **Multi-officer collaboration** | Implemented | Exclusive claim/release, handoff notes, Mine filter, named completion, live updates and revision checks against stale decisions; limited to one backend worker |
 | **Live intake** | Implemented for scripted scenes and signed Retell tools | Durable unranked drafts, progressive facts, backend-derived evidence, confirmation/cancellation and retry recovery. Live Clario (Retell voice and chat) streams the forming card through signed tools |
-| **Customer app** and **side-by-side demo** | Implemented, scripted | Five customer scenes, simulated biometrics/protection, read-back, corrections, live case tracker and outcomes at `/customer` and `/demo` |
+| **Customer app** and **officer-first demo** | Implemented | `/customer` retains its own scripted and live Clario entry points. `/demo` shows the full-width officer workspace; the optional customer preview opens from Live intake. Scripted scenes, read-back, corrections and outcomes still run |
 | **Protocol Database** and learning loop | Implemented | 31 sourced protocols, decision counts, repeated suggestions, owner approval/rejection, version history and rollback; production role separation is still missing |
 | SQLite persistence | Implemented | Cases, audit logs, claims/revisions, intake drafts, mock account changes, protocol suggestions and approved versions survive restarts |
 | Staff access and browser controls | Prototype controls implemented | Local-only unauthenticated demo; optional individual Basic accounts, server-derived audit identity, intake secret checks, same-origin checks and CSP. SSO/MFA and production roles remain open |
-| Automated verification | Available in repo | Prorio/API/persistence checks, workspace/insights/collaboration backend tests, and two browser suites. The previous implementation run passed 90 browser checks; see [Tests](#tests) to rerun |
+| Automated verification | Available in repo | Prorio/API/persistence checks, workspace/insights/collaboration backend tests, and two browser suites. See [Tests](#tests) for the current checks and commands |
 | Legacy Streamlit console and original officer page | Historical reference | Not the recommended dashboard and not equivalent to its current authentication or collaboration controls |
 | **Live Clario** (Retell voice and chat), `backend/clario_live.py` | Implemented; live Retell test per demo machine | In-app Get help → Text or Call; signed Retell tools for look-up, live draft card, confirmation and correction; customer fixed by the backend. Retell agent settings (prompt, knowledge base and functions) live in Retell, not this repo |
 | Live text chat / language | Retell integration implemented; language behaviour needs live rehearsal | Live chat uses the Retell chat agent; its language behaviour depends on the externally configured agent. Scripted scenes keep their supplied translations |
@@ -563,14 +563,14 @@ Prorio ([#7](https://github.com/bharath-blazecode/Team-Astars/pull/7)), dashboar
 
 The status documentation (#11), insights test correction (#12), live Clario integration (#13), SpeedQ branding
 (#14), live-test checklist (#15), rename cleanup (#17), light sidebar/control refinement (#18) and `.env` startup
-configuration (#19) are all ancestors of the verified `main` at `a184be1`.
+configuration (#19) and presentation-slide documentation (#20) are all ancestors of the verified `main` at `b6061d7`.
 
 The older [documentation PR #16](https://github.com/bharath-blazecode/Team-Astars/pull/16) is superseded: its five-file
 patch was carried into #18 as commit `bd4c4f4`, then updated further. Close it as superseded if it is still open;
 its older conflicts do not require another merge to deliver that content.
 
-**This documentation revision** replaces the earlier separate video plan with presentation slides, refreshes the
-current build guide and records logo-use boundaries. The [live Clario checklist](LIVE_TEST_CHECKLIST.md) still needs
+The presentation-slide plan, current build guide and logo-use notes are merged in #20. This revision makes the
+demo officer-first and moves its optional customer conversation into a preview accessed from Live intake. The [live Clario checklist](LIVE_TEST_CHECKLIST.md) still needs
 completion on the configured demo machine; automated Clario checks use a faked Retell client. Git history verifies
 merged code, not unpushed work, live Retell settings, a finished slide deck or submission readiness.
 
@@ -672,11 +672,16 @@ verified signals and separately labelled conversation reports. Drafts are not ra
 The `/demo` officer pane follows this building stage, then the ranked case after customer confirmation. See
 [the collaboration plan and walkthrough](COLLABORATION_PLAN.md).
 
-### Customer app and side-by-side demo
+### Customer app and officer-first demo
 
-The customer app remains at `/customer`, case tracking at `/customer?track=<reference>`, and the recording view at
-`/demo`. Its officer pane uses the redesigned workspace at `/officer`. These two child pages allow same-origin
-framing for the demo; other sites cannot frame them. The root `/` remains the standalone officer workspace.
+The customer app remains at `/customer`, case tracking at `/customer?track=<reference>`, and the officer-first demo
+at `/demo`. The demo displays `/officer` at full width. Scripted scene controls still drive card creation and handoff,
+but the customer chat is not a permanent left column or a sidebar option.
+
+In **Live intake**, choose **View customer conversation** to inspect the optional preview. Close it with **Close** or
+Escape to return to the workspace; the scene and case updates continue. The standalone `/` or `/officer` view opens
+the customer app in a separate tab. Live calls use that standalone customer page, retaining the current microphone
+policy. Only the two demo child pages permit same-origin framing; other sites cannot frame them.
 
 ### Recording the video
 
@@ -996,7 +1001,8 @@ accessibility reports (including checks requiring manual review) are written to 
 Set `BEACON_CHROMIUM` to choose another Chromium executable, `BEACON_PYTHON` for the backend Python executable, or
 `BEACON_TEST_PORT` if its default port 8025 is occupied.
 The collaboration suite uses port 8026 (`BEACON_COLLAB_PORT` overrides it), two independent officer sessions and the
-actual customer scene. Its screenshots include live intake, mobile intake and the side-by-side forming-card view.
+actual customer scene. Checks include the full-width demo, optional preview, keyboard focus return, mobile fit,
+separate customer tab and continued handoff while the preview is closed.
 
 ---
 
@@ -1037,7 +1043,7 @@ Team-Astars/
 │   ├── visuals.js       interactive care insights and score/context visuals
 │   ├── intake.js        live draft-card presentation
 │   └── tests/            isolated browser workflow checks
-├── web/                  retained customer app and side-by-side demo; original officer files are historical
+├── web/                  customer app and officer-first demo with optional conversation preview; original officer files are historical
 ├── DESIGN.md             dashboard interaction, appearance and security boundaries
 ├── FEATURE_REVIEW.md     data inventory, implemented additions and candidate features
 ├── COLLABORATION_PLAN.md  implemented shared ownership/live intake walkthrough

@@ -25,6 +25,12 @@ behavior rather than declaring the design final.
 6. **Improve:** modifications and manual handling feed the existing learning loop. Suggestions remain separate from
    active protocols until the configured threshold is reached and a human approves a new version.
 
+The `/demo` wrapper displays the officer workspace at full width. Its customer conversation is an optional modal
+preview opened from **Live intake**, with native Escape/Close handling and focus returned to the initiating link.
+The customer frame remains available to run scripted scenes while its preview is closed; the officer sees card
+facts and handoff updates without a chat column. Standalone officer pages link to the separate customer app instead.
+Live calls remain on the standalone customer page under the existing microphone policy.
+
 Required-check acknowledgements are interface safeguards, not proof that a real-world banking check occurred. The
 prototype still simulates every banking action. Incomplete customer-message drafts require manual handling in this UI.
 
