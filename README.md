@@ -629,9 +629,28 @@ Agree owners and acceptance criteria with the team before marking a planned item
 
 ## Run it
 
-**You need:** Python (3.12 is the current cloud setup) and a terminal. Installing dependencies needs package access;
+**You need:** Python 3.12 or newer (3.12 is the current cloud setup) and a terminal. Installing dependencies needs package access;
 the local scripted demo then runs without an AI API key, external service or frontend build step. Node is needed only
 for the browser test suites.
+
+### Windows: open it on your own computer
+
+1. Install **Python 3.12 or newer** from [python.org](https://www.python.org/downloads/windows/) if needed.
+2. Download the project ZIP and use **Extract All**. Open the extracted project folder; running from inside the ZIP
+   does not include all the files the server needs.
+3. Double-click **`START_WINDOWS.cmd`**. It creates a private `.dashboard-venv`, installs the existing backend
+   requirements on first use and opens the dashboard in your default browser. Initial setup needs internet access.
+4. **Keep that terminal window open** while using the app. Click **Load sample cases** for the synthetic queue.
+   Open `http://127.0.0.1:8010/demo` and choose Sam or Maria for the scripted customer scenarios; no Retell key is
+   needed for those scenes. Live Retell voice/chat still needs private settings.
+
+`127.0.0.1` always refers to the computer running the browser. A server started in a cloud environment is not
+reachable through your Windows browser's localhost unless a preview/port-forward connection is supplied. The
+Windows launcher starts the backend on your computer, so both the dashboard and `/demo` addresses work there.
+
+To launch from a terminal instead, run `py -3 run_dashboard.py`. Options include `--demo`, `--port 8011` and
+`--no-browser`. The launcher preserves existing cases and private settings; it never resets the database. If the
+same dashboard is already running, another launch opens it without starting a second worker.
 
 ### 1. Start the officer workspace and backend
 
@@ -1016,6 +1035,8 @@ separate customer tab and continued handoff while the preview is closed.
 Team-Astars/
 ├── README.md             this file
 ├── BUILD.md              current build, setup and delivery guide
+├── START_WINDOWS.cmd     double-click launcher for a local Windows preview
+├── run_dashboard.py      local environment/setup, readiness check and browser opener
 ├── docs/video/          SHOT_LIST.md recording plan and SCRIPT.md team narration in the existing 15-slide order
 ├── backend/
 │   ├── main.py           the web service and its endpoints
