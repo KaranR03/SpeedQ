@@ -11,7 +11,7 @@ export function createVisuals({
   filterFromInsight,
 }) {
   const colours = {
-    P1: "#af2640",
+    P1: "var(--p1)",
     P2: "#a96224",
     P3: "#456da0",
     P4: "#587568",
@@ -106,7 +106,7 @@ export function createVisuals({
         cy: 85,
         r: 61,
         fill: "none",
-        stroke: "#eee8ef",
+        stroke: "var(--surface)",
         "stroke-width": 17,
       }),
     );

@@ -1,4 +1,4 @@
-"""Scoring: the Beacon Assist harm-clock score (0 to 100) and the gates. Every point has a written reason.
+"""Scoring: the Westpac SpeedQ harm-clock score (0 to 100) and the gates. Every point has a written reason.
 
 Score = Harm (0-60) + Time to harm (0-20) + Verified account signals (+10 each, max 20) + Care needs (+10)
         + Waiting (+2 per 10 minutes, max 10), capped at 100.

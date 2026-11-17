@@ -1,6 +1,6 @@
 {
   "_about": {
-    "what": "Beacon Assist Protocol Database, demo version 2.1. One protocol per scenario. Prorio reads it to draft proposals; officers suggest changes; a protocol owner approves; every change bumps the protocol's version.",
+    "what": "Westpac SpeedQ Protocol Database, demo version 2.1. One protocol per scenario. Prorio reads it to draft proposals; officers suggest changes; a protocol owner approves; every change bumps the protocol's version.",
     "how_written": "Every protocol is written in the team's own words. It summarises facts from public pages (each listed under sources) and never copies their text. Steps marked team_design are our own design, not a published rule. See backend/data/PROTOCOLS_SOURCES.md for the copyright approach.",
     "not_real": "This is not Westpac's internal procedure. It is a demo built from public information, read on 16 Nov 2026. Facts can change; re-check the source before relying on one.",
     "harm_categories": {
@@ -47,7 +47,7 @@
       "required_checks": ["Face ID before SafeBlock", "gate G1: P1 needs at least one verified account signal"],
       "customer_message": "SafeBlock is on and a fraud specialist is working on case {case_id}. We'll try to stop or recover the payments, but recovery isn't guaranteed. Don't pay anyone who offers to get your money back for a fee.",
       "timeframes": [{"what": "Scam case updates", "rule": "Weekly email updates; most cases resolved within 21 days, complex ones take longer", "source": "westpac_track_case"}],
-      "notes": "SafeBlock can be turned off by the customer in the app once they're ready. Beacon's AI never turns it off.",
+      "notes": "SafeBlock can be turned off by the customer in the app once they're ready. SpeedQ's AI never turns it off.",
       "sources": ["westpac_scam_types", "westpac_impersonation", "westpac_remote_access", "westpac_enhance_security", "westpac_track_case", "westpac_payment_limit", "aba_scammed", "moneysmart_scammed"]
     },
     {

@@ -1,4 +1,4 @@
-/* Beacon Assist. No external scripts, analytics or rendering of data as HTML. */
+/* Westpac SpeedQ. No external scripts, analytics or rendering of data as HTML. */
 "use strict";
 import { createVisuals } from "/assets/visuals.js";
 import { createIntake } from "/assets/intake.js";
@@ -619,7 +619,7 @@ function showView(view) {
     $(id).hidden = !visible;
   }
   $("breadcrumb-current").textContent = names[view];
-  document.title = `${names[view]} · Beacon Assist`;
+  document.title = `${names[view]} · Westpac SpeedQ`;
   document.querySelectorAll("[data-view]").forEach((b) => {
     const selected =
       b.dataset.view === (view === "detail" ? state.returnView : view);
