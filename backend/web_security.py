@@ -15,6 +15,13 @@ from fastapi.responses import JSONResponse
 DEMO_OFFICERS = ("Demo officer", "Alex Morgan", "Taylor Lee")
 
 
+def is_local(request):
+    """A loopback client that is not a tunnel or proxy relaying someone else (ngrok connects from 127.0.0.1 and adds
+    X-Forwarded-For), so exposing the demo through a tunnel never makes the internet look local."""
+    return bool(request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
+                and not request.headers.get("x-forwarded-for") and not request.headers.get("forwarded"))
+
+
 def auth_enabled():
     return bool(os.environ.get("NRY_STAFF_PASSWORD") or os.environ.get("NRY_STAFF_ACCOUNTS", "").strip())
 
@@ -53,8 +60,10 @@ def _staff_identity(request):
 
 async def browser_security(request: Request, call_next):
     write = request.method not in ("GET", "HEAD", "OPTIONS")
-    # The voice webhook is a server-to-server integration, authenticated separately.
-    webhook = request.url.path == "/webhook/retell" and request.method == "POST"
+    # The voice webhook and Clario's Retell tools are server-to-server integrations, authenticated separately
+    # (webhook secret; Retell signature).
+    webhook = (request.url.path == "/webhook/retell" or request.url.path.startswith("/retell/tools/")) \
+        and request.method == "POST"
     secret_intake = request.url.path == "/case" and request.method == "POST" and bool(
         os.environ.get("NRY_WEBHOOK_SECRET"))
     draft_intake = request.url.path.startswith("/intake/drafts") and request.method == "POST" and bool(
@@ -64,7 +73,7 @@ async def browser_security(request: Request, call_next):
                        if item.strip() and item.strip() != "*"}
     trusted_origin = origin in trusted_origins
     same_origin = not origin or origin == f"{request.url.scheme}://{request.url.netloc}" or trusted_origin
-    local_client = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
+    local_client = is_local(request)
     if not auth_enabled() and not local_client and not webhook and not secret_intake and not draft_intake:
         response = JSONResponse({"detail": "Local demo only. Configure staff authentication for remote access."},
                                 status_code=403)
@@ -96,6 +105,11 @@ async def browser_security(request: Request, call_next):
         response.headers["Content-Security-Policy"] = response.headers["Content-Security-Policy"].replace(
             "frame-ancestors 'none'", "frame-ancestors 'self'")
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    # The customer app can call Clario by voice: microphone for this page only, and Retell's media servers.
+    if request.url.path == "/customer":
+        response.headers["Content-Security-Policy"] = response.headers["Content-Security-Policy"].replace(
+            "connect-src 'self'", "connect-src 'self' https://*.livekit.cloud wss://*.livekit.cloud https://api.retellai.com wss://api.retellai.com")
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(self), geolocation=()"
     return response
 
 

@@ -251,3 +251,13 @@ body.demo { display: flex; flex-direction: column; height: 100vh; overflow: hidd
 .stage .left { border-right: 1px solid var(--line); background: #e9ecf1; }
 .dbar .spacer { flex: 1; }
 .wrap h2 { margin-top: 18px; }
+
+/* Live Clario: "Get help" -> Text or Call */
+.livebar, .scripted { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.livebar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; }
+.picker { flex-direction: column; align-items: center; }
+.quick .help-opt { flex: 1; border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--ink); background: var(--panel); }
+.quick .help-opt.end { background: var(--accent); color: #fff; border-color: var(--accent); }
+.composer { display: flex; gap: 6px; width: 100%; }
+.composer-in { flex: 1; font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 999px; }
+.transcript { display: flex; flex-direction: column; gap: 8px; }

@@ -18,7 +18,8 @@ import store
 import workspace_insights
 import workspace_events
 import intake_drafts
-from web_security import actor, auth_enabled, browser_security, DEMO_OFFICERS
+import clario_live
+from web_security import actor, auth_enabled, is_local, browser_security, DEMO_OFFICERS
 from models import Decision, OfficerNote, OwnerDecision, Rerank, RetellPayload, DraftStart, DraftUpdate, DraftConfirm, DraftRevision
 from prorio import evidence, learning, protocols
 from prorio.propose import ACTIONS, ACTION_TEXT
@@ -35,6 +36,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=[
     h.strip() for h in os.environ.get("NRY_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1],testserver").split(",")
     if h.strip()
 ])
+app.include_router(clario_live.router)
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 WEB = Path(__file__).resolve().parent.parent / "web"
 
@@ -121,7 +123,7 @@ def _errors(fn, *args):
 def _check_secret(request: Request, x_webhook_secret: str = Header(default="")):
     """Remote intake always requires a secret; local demo intake may remain open."""
     secret = os.environ.get("NRY_WEBHOOK_SECRET", "")
-    local = request.client and request.client.host in ("127.0.0.1", "::1", "testclient")
+    local = is_local(request)
     if (auth_enabled() or not local) and not secret:
         raise HTTPException(503, "Configure NRY_WEBHOOK_SECRET before enabling remote or authenticated intake.")
     if secret and not hmac.compare_digest(x_webhook_secret.encode(), secret.encode()):
@@ -359,7 +361,7 @@ def clario_lookup(customer_id: str):
 
 @app.get("/static/{filename}", include_in_schema=False)
 def demo_asset(filename: str):
-    if filename not in {"app.css", "officer.js", "customer.js", "demo.js", "dom.js"}:
+    if filename not in {"app.css", "officer.js", "customer.js", "demo.js", "dom.js", "retell-web.js"}:
         raise HTTPException(404, "asset not found")
     return FileResponse(WEB / "static" / filename)
 
