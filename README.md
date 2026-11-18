@@ -1,5 +1,32 @@
 # Westpac SpeedQ
 
+[![Backend tests](https://github.com/KaranR03/SpeedQ/actions/workflows/ci.yml/badge.svg)](https://github.com/KaranR03/SpeedQ/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![Retell](https://img.shields.io/badge/Retell-voice%20%26%20chat-111111)
+
+**AI-assisted scam and fraud triage: the customer explains once, the case is ranked by how fast harm grows, and a person makes the call.**
+Team Astars' entry for the Westpac Innovation & Coding Competition (Hackathon) 2026.
+
+![The SpeedQ officer dashboard showing the ranked priority queue and a case overview](docs/screenshots/dashboard.png)
+
+*The officer dashboard with synthetic sample cases. A customer being scammed right now ranks first, with the evidence behind the score shown alongside.*
+
+### Quick start
+
+```bash
+git clone https://github.com/KaranR03/SpeedQ.git
+cd SpeedQ/backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Open <http://127.0.0.1:8000> and click **Load sample cases**. The scripted customer demo is at `/demo`. No API key is needed for either. Live Retell voice and chat are optional; see [Live Clario](#live-clario-retell-voice-and-chat).
+
+---
+
 **Team Astars · Westpac Innovation & Coding Competition (Hackathon) 2026**
 
 The team selected the original dashboard layout and partitions, with a restrained
